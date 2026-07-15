@@ -14,6 +14,25 @@ DEFAULT_ROLES = [
     {"name": "Client", "description": "Client portal view-only access"},
 ]
 
+# Standard implementable modules (SOP section 5, stage 3).
+DEFAULT_MODULES = [
+    {"name": "Admissions", "category": "Academic"},
+    {"name": "Attendance", "category": "Academic"},
+    {"name": "Academics", "category": "Academic"},
+    {"name": "Finance", "category": "Administrative"},
+    {"name": "Examination", "category": "Academic"},
+    {"name": "Hostel", "category": "Administrative"},
+    {"name": "Transport", "category": "Administrative"},
+    {"name": "Library", "category": "Academic"},
+    {"name": "LMS", "category": "Academic"},
+    {"name": "Feedback", "category": "Engagement"},
+    {"name": "Placement", "category": "Engagement"},
+    {"name": "Research", "category": "Academic"},
+    {"name": "Alumni", "category": "Engagement"},
+    {"name": "Campus Help Centre", "category": "Support"},
+    {"name": "Analytics", "category": "Reporting"},
+]
+
 
 def seed_data(db: Session) -> None:
     # Seed roles
@@ -21,6 +40,13 @@ def seed_data(db: Session) -> None:
     for role_data in DEFAULT_ROLES:
         if role_data["name"] not in existing_roles:
             db.add(models.Role(**role_data))
+    db.commit()
+
+    # Seed module catalogue
+    existing_modules = {m.name for m in db.query(models.Module).all()}
+    for module_data in DEFAULT_MODULES:
+        if module_data["name"] not in existing_modules:
+            db.add(models.Module(**module_data))
     db.commit()
 
     # Seed admin user if not present

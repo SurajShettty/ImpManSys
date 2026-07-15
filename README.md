@@ -95,9 +95,32 @@ ImpManSys/
 
 - **Phase 1**: Scaffolding & Infrastructure (Docker, Nginx, React, FastAPI)
 - **Phase 2**: Database & Authentication Foundation (JWT, roles, users, audit logs)
+- **Phase 3**: Core Implementation Hierarchy
+  - Client & Project CRUD with role-based access
+  - Module catalogue (15 standard modules per the SOP)
+  - `Client → Project → Module → Phase → Task → Checklist` hierarchy
+  - Automatic 7-phase implementation plan generation when a module is added
+    (Kickoff → Configuration → Data Preparation → Testing → Training → Go-Live → Hypercare)
+  - Real-time progress roll-up (task → module → project)
+  - Management dashboard summary (clients, active/delayed projects, upcoming go-lives)
+
+### Key API endpoints (Phase 3)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET/POST | `/api/clients` | List / create clients |
+| GET/PUT/DELETE | `/api/clients/{id}` | Client detail / update / delete |
+| GET/POST | `/api/projects` | List / create projects |
+| POST | `/api/projects/{id}/modules` | Add a module (auto-generates its plan) |
+| GET | `/api/projects/{id}/plan` | Full drill-down: modules → phases → tasks → checklists |
+| GET | `/api/modules` | Module catalogue |
+| PUT | `/api/tasks/{id}` | Update a task (status change rolls progress up) |
+| POST | `/api/tasks/{id}/checklist` | Add a checklist item |
+| GET | `/api/dashboard/summary` | Management dashboard cards |
 
 ## Next Steps
 
-- Client & Project CRUD
-- Module / Phase / Task hierarchy
-- Dashboards & reporting
+- Risk Register & Issue Tracker
+- Meeting / Communication log & Document repository
+- Dependency engine, Gantt timeline & Kanban board
+- Notifications & Client Portal
