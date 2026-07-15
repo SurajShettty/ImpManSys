@@ -1,0 +1,57 @@
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.auth import decode_access_token
+from app import models, schemas
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> models.User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None or payload.get("sub") is None:
+        raise credentials_exception
+
+    user_id = int(payload.get("sub"))
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None or not user.is_active:
+        raise credentials_exception
+
+    return user
+
+
+def get_current_active_user(current_user: models.User = Depends(get_current_user)) -> models.User:
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+def require_role(*allowed_roles: str):
+    def role_checker(current_user: models.User = Depends(get_current_active_user)) -> models.User:
+        if current_user.role.name not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+
+    return role_checker
+
+
+def user_to_token_schema(user: models.User) -> schemas.UserInToken:
+    return schemas.UserInToken(
+        id=user.id,
+        email=user.email,
+        role_id=user.role_id,
+        role_name=user.role.name,
+    )
