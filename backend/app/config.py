@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 1 day
 
     db_host: str = "db"
-    db_port: int = 3306
+    db_port: int = 5432
     db_user: str = "ims"
     db_password: str = "ims"
     db_name: str = "ims"
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         return (
-            f"mysql+pymysql://{self.db_user}:{self.db_password}"
+            f"postgresql+psycopg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
         )
 

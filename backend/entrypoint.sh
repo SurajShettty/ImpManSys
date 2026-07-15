@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# Wait for MySQL to be ready
-echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
+# Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
 while ! python -c "
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -15,7 +15,7 @@ except Exception:
 " 2>/dev/null; do
     sleep 1
 done
-echo "MySQL is ready."
+echo "PostgreSQL is ready."
 
 # Run database migrations
 echo "Running database migrations..."

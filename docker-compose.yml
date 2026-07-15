@@ -2,20 +2,19 @@ version: "3.8"
 
 services:
   db:
-    image: mysql:8.0
+    image: postgres:16-alpine
     container_name: ims-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-ims}
-      MYSQL_USER: ${DB_USER:-ims}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-ims}
+      POSTGRES_USER: ${DB_USER:-ims}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ims}
+      POSTGRES_DB: ${DB_NAME:-ims}
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data
     ports:
-      - "3306:3306"
+      - "5432:5432"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ims} -d ${DB_NAME:-ims}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,7 +29,7 @@ services:
       - .env
     environment:
       DB_HOST: db
-      DB_PORT: 3306
+      DB_PORT: 5432
       DB_USER: ${DB_USER:-ims}
       DB_PASSWORD: ${DB_PASSWORD:-ims}
       DB_NAME: ${DB_NAME:-ims}

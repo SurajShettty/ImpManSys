@@ -8,7 +8,7 @@ A centralized platform to manage client onboarding, implementation, rollout, enh
 |-------|-----------|
 | Frontend | React.js (Vite) |
 | Backend API | FastAPI (Python) |
-| Database | MySQL 8.x |
+| Database | PostgreSQL 16 |
 | ORM | SQLAlchemy |
 | Authentication | JWT |
 | File Storage | Local Storage |
@@ -41,17 +41,37 @@ Once all services are healthy:
 
 ## Local Development (without Docker)
 
-### Backend
+### 1. Install PostgreSQL 16
+
+Download and install from https://www.postgresql.org/download/windows/
+
+Create the database and user:
+
+```sql
+CREATE DATABASE ims;
+CREATE USER ims WITH PASSWORD 'ims';
+GRANT ALL PRIVILEGES ON DATABASE ims TO ims;
+```
+
+### 2. Backend
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# On Windows:
+.venv\Scripts\activate
+
+# On Linux/Mac:
+source .venv/bin/activate
+
 pip install -r requirements.txt
+alembic upgrade head
+python -c "from app.database import SessionLocal; from app.utils.seed import seed_data; db = SessionLocal(); seed_data(db); db.close()"
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+### 3. Frontend
 
 ```bash
 cd frontend
