@@ -14,6 +14,9 @@ export default function Layout() {
             <NavLink to="/" end className="nav-link">Dashboard</NavLink>
             <NavLink to="/clients" className="nav-link">Clients</NavLink>
             <NavLink to="/projects" className="nav-link">Projects</NavLink>
+            {user?.role_name === 'Administrator' && (
+              <NavLink to="/users" className="nav-link">Users</NavLink>
+            )}
           </div>
         </div>
         <div className="navbar-user">

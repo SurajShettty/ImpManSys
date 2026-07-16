@@ -64,7 +64,12 @@ export default function Clients() {
               </div>
               <div>
                 <label>Institution Type</label>
-                <input value={form.institution_type} onChange={set('institution_type')} />
+                <select value={form.institution_type} onChange={set('institution_type')}>
+                  <option value="">Select…</option>
+                  <option>University</option>
+                  <option>College</option>
+                  <option>School</option>
+                </select>
               </div>
               <div>
                 <label>CRM ID</label>

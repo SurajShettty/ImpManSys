@@ -14,6 +14,28 @@ const TASK_STATUSES = [
   'Cancelled',
 ]
 
+const PROJECT_TYPES = [
+  'New Implementation',
+  'Additional Module',
+  'Migration',
+  'Upgrade',
+  'Feature Rollout',
+  'Integration',
+  'Custom Development',
+]
+
+const PROJECT_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
+
+const EDITABLE_FIELDS = ['name', 'description', 'type', 'status', 'start_date', 'end_date']
+
+function toForm(project) {
+  const f = {}
+  for (const key of EDITABLE_FIELDS) {
+    f[key] = project[key] == null ? '' : project[key]
+  }
+  return f
+}
+
 export default function ProjectDetail() {
   const { id } = useParams()
   const [project, setProject] = useState(null)
@@ -23,6 +45,9 @@ export default function ProjectDetail() {
   const [selectedModule, setSelectedModule] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({})
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const loadPlan = () =>
     Promise.all([api.get(`/projects/${id}`), api.get(`/projects/${id}/plan`)]).then(
@@ -78,6 +103,33 @@ export default function ProjectDetail() {
     await loadPlan()
   }
 
+  const startEdit = () => {
+    setEditForm(toForm(project))
+    setEditing(true)
+    setError('')
+  }
+
+  const setEdit = (k) => (e) => setEditForm({ ...editForm, [k]: e.target.value })
+
+  const submitEdit = async (e) => {
+    e.preventDefault()
+    setSavingEdit(true)
+    setError('')
+    try {
+      const payload = {}
+      for (const key of EDITABLE_FIELDS) {
+        payload[key] = editForm[key] === '' ? null : editForm[key]
+      }
+      await api.put(`/projects/${id}`, payload)
+      setEditing(false)
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update project')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   if (!project) return <div className="muted">{error || 'Loading…'}</div>
 
   return (
@@ -90,14 +142,74 @@ export default function ProjectDetail() {
         <StatusBadge value={project.status} />
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div className="stat-grid">
-          <div><p className="stat-label">Type</p><p>{project.type}</p></div>
-          <div><p className="stat-label">Overall Progress</p><ProgressBar value={project.progress} /></div>
-          <div><p className="stat-label">Start</p><p>{project.start_date || '—'}</p></div>
-          <div><p className="stat-label">End</p><p>{project.end_date || '—'}</p></div>
+      {!editing ? (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="page-header" style={{ marginTop: 0 }}>
+            <h3 style={{ margin: 0 }}>Project Details</h3>
+            <button className="btn btn-secondary btn-sm" onClick={startEdit}>Edit</button>
+          </div>
+          <div className="stat-grid">
+            <div><p className="stat-label">Type</p><p>{project.type}</p></div>
+            <div><p className="stat-label">Status</p><p>{project.status}</p></div>
+            <div><p className="stat-label">Overall Progress</p><ProgressBar value={project.progress} /></div>
+            <div><p className="stat-label">Start</p><p>{project.start_date || '—'}</p></div>
+            <div><p className="stat-label">End</p><p>{project.end_date || '—'}</p></div>
+          </div>
+          {project.description && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <p className="stat-label">Description</p>
+              <p style={{ margin: 0 }}>{project.description}</p>
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ marginTop: 0 }}>Edit Project Details</h3>
+          <form onSubmit={submitEdit}>
+            <div className="form-row">
+              <div>
+                <label>Name *</label>
+                <input value={editForm.name} onChange={setEdit('name')} required />
+              </div>
+              <div>
+                <label>Type</label>
+                <select value={editForm.type} onChange={setEdit('type')}>
+                  {PROJECT_TYPES.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Status</label>
+                <select value={editForm.status} onChange={setEdit('status')}>
+                  {PROJECT_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Start Date</label>
+                <input type="date" value={editForm.start_date} onChange={setEdit('start_date')} />
+              </div>
+              <div>
+                <label>End Date</label>
+                <input type="date" value={editForm.end_date} onChange={setEdit('end_date')} />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginTop: '0.75rem' }}>
+              <label>Description</label>
+              <textarea rows={3} value={editForm.description} onChange={setEdit('description')} />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-primary" disabled={savingEdit}>
+                {savingEdit ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button type="button" className="btn btn-light" onClick={() => setEditing(false)}>
+                Cancel
+              </button>
+            </div>
+            <p className="muted" style={{ marginBottom: 0 }}>
+              Note: status auto-updates from task progress unless set to "On Hold" or "Cancelled".
+            </p>
+          </form>
+        </div>
+      )}
 
       <div className="page-header">
         <h3 style={{ margin: 0 }}>Modules & Implementation Plan</h3>

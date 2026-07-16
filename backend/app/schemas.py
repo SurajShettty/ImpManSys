@@ -39,6 +39,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    email: str  # output as plain string so special-use domains (e.g. .local) don't break responses
     created_at: datetime
     updated_at: datetime
     role: RoleResponse | None = None
@@ -85,7 +86,7 @@ class UserBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
-    email: EmailStr
+    email: str  # plain string on output to avoid strict email validation for existing data
 
 
 # ---------- Client ----------
