@@ -69,9 +69,19 @@ def update_task(
     task = _load_task(db, task_id)
     data = payload.model_dump(exclude_unset=True)
 
-    # Keep progress consistent with an explicit status change.
-    if data.get("status") == "Completed" and "progress" not in data:
-        data["progress"] = 100.0
+    # Keep progress consistent with a status change. Completed = 100%.
+    # Re-opening a completed task resets progress unless the caller explicitly
+    # provided a new progress value.
+    new_status = data.get("status")
+    old_status = task.status
+    if new_status is not None:
+        if new_status == "Completed":
+            data["progress"] = 100.0
+        elif old_status == "Completed" and new_status != "Completed":
+            if "progress" not in data:
+                data["progress"] = 0.0
+        elif new_status == "Not Started" and "progress" not in data:
+            data["progress"] = 0.0
 
     for field, value in data.items():
         setattr(task, field, value)

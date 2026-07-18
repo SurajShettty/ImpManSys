@@ -4,7 +4,7 @@ import React from 'react'
 const STATUS_COLOURS = {
   // Generic / project / module
   'Not Started': 'grey',
-  'In Progress': 'blue',
+  'In Progress': 'theme',
   'On Hold': 'amber',
   'Completed': 'green',
   'Cancelled': 'red',
@@ -15,13 +15,13 @@ const STATUS_COLOURS = {
   'Waiting for Client': 'amber',
   'Waiting for Internal Team': 'amber',
   'Blocked': 'red',
-  'Under Testing': 'blue',
+  'Under Testing': 'theme',
 }
 
 const PRIORITY_COLOURS = {
   Critical: 'red',
   High: 'amber',
-  Medium: 'blue',
+  Medium: 'theme',
   Low: 'grey',
 }
 

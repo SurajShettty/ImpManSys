@@ -42,3 +42,64 @@ def create_user(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/{user_id}", response_model=schemas.UserResponse)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("Administrator")),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.put("/{user_id}", response_model=schemas.UserResponse)
+def update_user(
+    user_id: int,
+    payload: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("Administrator")),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    data = payload.model_dump(exclude_unset=True)
+
+    if "email" in data and data["email"] != user.email:
+        existing = db.query(models.User).filter(models.User.email == data["email"]).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+    if "role_id" in data:
+        role = db.query(models.Role).filter(models.Role.id == data["role_id"]).first()
+        if not role:
+            raise HTTPException(status_code=400, detail="Role not found")
+
+    if "password" in data and data["password"]:
+        data["hashed_password"] = get_password_hash(data.pop("password"))
+    else:
+        data.pop("password", None)
+
+    for field, value in data.items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("Administrator")),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()

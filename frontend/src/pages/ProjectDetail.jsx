@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, PriorityBadge, ProgressBar } from '../components/ui'
 
@@ -38,6 +38,7 @@ function toForm(project) {
 
 export default function ProjectDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [project, setProject] = useState(null)
   const [plan, setPlan] = useState([])
   const [catalog, setCatalog] = useState([])
@@ -48,6 +49,7 @@ export default function ProjectDetail() {
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [savingEdit, setSavingEdit] = useState(false)
+  const [newChecklist, setNewChecklist] = useState({})
 
   const loadPlan = () =>
     Promise.all([api.get(`/projects/${id}`), api.get(`/projects/${id}/plan`)]).then(
@@ -103,6 +105,41 @@ export default function ProjectDetail() {
     await loadPlan()
   }
 
+  const addChecklistItem = async (taskId) => {
+    const text = newChecklist[taskId]?.trim()
+    if (!text) return
+    setError('')
+    try {
+      await api.post(`/tasks/${taskId}/checklist`, { item: text })
+      setNewChecklist({ ...newChecklist, [taskId]: '' })
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to add checklist item')
+    }
+  }
+
+  const deleteTask = async (taskId, taskTitle) => {
+    if (!window.confirm(`Delete task "${taskTitle}"?`)) return
+    setError('')
+    try {
+      await api.delete(`/tasks/${taskId}`)
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete task')
+    }
+  }
+
+  const deleteProject = async () => {
+    if (!window.confirm(`Delete project "${project.name}"? This will remove all modules, phases, and tasks.`)) return
+    setError('')
+    try {
+      await api.delete(`/projects/${id}`)
+      navigate('/projects')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete project')
+    }
+  }
+
   const startEdit = () => {
     setEditForm(toForm(project))
     setEditing(true)
@@ -139,7 +176,12 @@ export default function ProjectDetail() {
       </div>
       <div className="page-header">
         <h2 style={{ margin: 0 }}>{project.name}</h2>
-        <StatusBadge value={project.status} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <StatusBadge value={project.status} />
+          <button className="btn btn-danger btn-sm" onClick={deleteProject}>
+            Delete Project
+          </button>
+        </div>
       </div>
 
       {!editing ? (
@@ -254,11 +296,12 @@ export default function ProjectDetail() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th style={{ width: '40%' }}>Task</th>
+                        <th style={{ width: '25%' }}>Task</th>
                         <th>Priority</th>
                         <th>Status</th>
                         <th>Progress</th>
                         <th>Checklist</th>
+                        <th style={{ width: '1%', textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -276,9 +319,7 @@ export default function ProjectDetail() {
                           </td>
                           <td style={{ minWidth: 120 }}><ProgressBar value={task.progress} /></td>
                           <td>
-                            {task.checklist_items.length === 0 ? (
-                              <span className="muted">—</span>
-                            ) : (
+                            {task.checklist_items.length > 0 && (
                               <ul className="checklist">
                                 {task.checklist_items.map((ci) => (
                                   <li key={ci.id}>
@@ -292,6 +333,31 @@ export default function ProjectDetail() {
                                 ))}
                               </ul>
                             )}
+                            <div className="inline-form" style={{ marginTop: '0.5rem', flexWrap: 'nowrap' }}>
+                              <input
+                                type="text"
+                                placeholder="Add checklist item…"
+                                value={newChecklist[task.id] || ''}
+                                onChange={(e) => setNewChecklist({ ...newChecklist, [task.id]: e.target.value })}
+                                onKeyDown={(e) => e.key === 'Enter' && addChecklistItem(task.id)}
+                                style={{ flex: 1, minWidth: 120 }}
+                              />
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => addChecklistItem(task.id)}
+                                disabled={!newChecklist[task.id]?.trim()}
+                              >
+                                Add
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => deleteTask(task.id, task.title)}
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))}

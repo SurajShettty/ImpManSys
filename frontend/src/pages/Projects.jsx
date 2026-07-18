@@ -8,14 +8,30 @@ export default function Projects() {
   const [clients, setClients] = useState({})
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  const load = () => {
+    setError('')
     Promise.all([api.get('/projects/'), api.get('/clients/')])
       .then(([p, c]) => {
         setProjects(p.data)
         setClients(Object.fromEntries(c.data.map((cl) => [cl.id, cl.name])))
       })
       .catch(() => setError('Failed to load projects'))
+  }
+
+  useEffect(() => {
+    load()
   }, [])
+
+  const deleteProject = async (project) => {
+    if (!window.confirm(`Delete project "${project.name}"? This cannot be undone.`)) return
+    setError('')
+    try {
+      await api.delete(`/projects/${project.id}`)
+      load()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete project')
+    }
+  }
 
   return (
     <div>
@@ -34,6 +50,7 @@ export default function Projects() {
               <th>Status</th>
               <th>Progress</th>
               <th>End Date</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -45,10 +62,17 @@ export default function Projects() {
                 <td><StatusBadge value={p.status} /></td>
                 <td><ProgressBar value={p.progress} /></td>
                 <td>{p.end_date || '—'}</td>
+                <td>
+                  <div className="actions" style={{ justifyContent: 'flex-end' }}>
+                    <button className="btn btn-danger btn-sm" onClick={() => deleteProject(p)}>
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
             {projects.length === 0 && (
-              <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>No projects yet.</td></tr>
+              <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>No projects yet.</td></tr>
             )}
           </tbody>
         </table>

@@ -34,6 +34,7 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     role_id: int | None = None
     is_active: bool | None = None
+    password: str | None = None
 
 
 class UserResponse(UserBase):

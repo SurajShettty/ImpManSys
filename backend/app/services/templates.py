@@ -77,8 +77,16 @@ def _task_progress(task: models.Task) -> float:
 def recompute_project_module_progress(
     db: Session, project_module: models.ProjectModule
 ) -> None:
-    """Roll task progress up to the project module, then to the project."""
-    tasks = [t for phase in project_module.phases for t in phase.tasks]
+    """Roll task progress up to the project module, then to the project.
+
+    Cancelled tasks are excluded from the overall progress calculation.
+    """
+    tasks = [
+        t
+        for phase in project_module.phases
+        for t in phase.tasks
+        if t.status != "Cancelled"
+    ]
     if tasks:
         project_module.progress = round(
             sum(_task_progress(t) for t in tasks) / len(tasks), 2
