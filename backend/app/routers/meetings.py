@@ -3,12 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas
-from app.dependencies import get_current_active_user, require_role
+from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 
 router = APIRouter()
-
-MANAGER_ROLES = ("Administrator", "Customer Success Manager", "Project Manager")
 
 
 def _load_project(db: Session, project_id: int) -> models.Project:
@@ -24,7 +22,7 @@ def _load_project(db: Session, project_id: int) -> models.Project:
 def list_meetings(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("meeting.view")),
 ):
     _load_project(db, project_id)
     return (
@@ -43,7 +41,7 @@ def create_meeting(
     project_id: int,
     payload: schemas.MeetingCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("meeting.create")),
 ):
     project = _load_project(db, project_id)
     meeting = models.Meeting(
@@ -69,7 +67,7 @@ def get_meeting(
     project_id: int,
     meeting_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("meeting.view")),
 ):
     _load_project(db, project_id)
     meeting = (
@@ -92,7 +90,7 @@ def update_meeting(
     meeting_id: int,
     payload: schemas.MeetingUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("meeting.update")),
 ):
     _load_project(db, project_id)
     meeting = (
@@ -126,7 +124,7 @@ def delete_meeting(
     project_id: int,
     meeting_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("meeting.delete")),
 ):
     _load_project(db, project_id)
     meeting = (

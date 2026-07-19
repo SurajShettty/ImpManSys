@@ -19,6 +19,33 @@ class RoleResponse(RoleBase):
     id: int
 
 
+# ---------- Permissions ----------
+class PermissionBase(BaseModel):
+    code: str
+    name: str
+    description: str | None = None
+    category: str | None = None
+
+
+class PermissionCreate(PermissionBase):
+    pass
+
+
+class PermissionResponse(PermissionBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+
+
+class RolePermissionUpdate(BaseModel):
+    permission_codes: list[str]
+
+
+class RolePermissionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    role_id: int
+    permissions: list[PermissionResponse] = []
+
+
 # ---------- User ----------
 class UserBase(BaseModel):
     name: str
@@ -53,6 +80,7 @@ class UserInToken(BaseModel):
     email: str
     role_id: int
     role_name: str
+    permissions: list[str] = []
 
 
 # ---------- Auth ----------

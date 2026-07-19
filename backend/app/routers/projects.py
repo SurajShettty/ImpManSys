@@ -3,20 +3,18 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas
-from app.dependencies import get_current_active_user, require_role
+from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 from app.services.templates import generate_module_plan, recompute_project_progress
 
 router = APIRouter()
-
-MANAGER_ROLES = ("Administrator", "Customer Success Manager", "Project Manager")
 
 
 @router.get("/", response_model=List[schemas.ProjectResponse])
 def list_projects(
     client_id: int | None = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("project.view")),
 ):
     query = db.query(models.Project).filter(models.Project.is_deleted == False)
     if client_id is not None:
@@ -28,7 +26,7 @@ def list_projects(
 def create_project(
     payload: schemas.ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("project.create")),
 ):
     client = db.query(models.Client).filter(models.Client.id == payload.client_id, models.Client.is_deleted == False).first()
     if not client:
@@ -46,7 +44,7 @@ def create_project(
 def get_project(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("project.view")),
 ):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
@@ -59,7 +57,7 @@ def update_project(
     project_id: int,
     payload: schemas.ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("project.update")),
 ):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
@@ -77,7 +75,7 @@ def update_project(
 def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator", "Project Manager")),
+    current_user: models.User = Depends(require_permission("project.delete")),
 ):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
@@ -110,7 +108,7 @@ def delete_project(
 def list_project_modules(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("module.view")),
 ):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
@@ -127,7 +125,7 @@ def add_project_module(
     project_id: int,
     payload: schemas.ProjectModuleCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("module.create")),
 ):
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
@@ -174,7 +172,7 @@ def remove_project_module(
     project_id: int,
     project_module_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("module.delete")),
 ):
     project_module = (
         db.query(models.ProjectModule)
@@ -214,7 +212,7 @@ def remove_project_module(
 def get_project_plan(
     project_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("project.view")),
 ):
     """Full drill-down: every module with its phases, tasks and checklists."""
     project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()

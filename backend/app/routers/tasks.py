@@ -3,19 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas
-from app.dependencies import get_current_active_user, require_role
+from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 from app.services.templates import recompute_project_module_progress
 
 router = APIRouter()
 
+
 # Task-level work can also be done by implementation executives.
-EXECUTOR_ROLES = (
-    "Administrator",
-    "Customer Success Manager",
-    "Project Manager",
-    "Implementation Executive",
-)
 
 
 def _load_task(db: Session, task_id: int) -> models.Task:
@@ -34,7 +29,7 @@ def _roll_up(db: Session, task: models.Task) -> None:
 def get_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("task.view")),
 ):
     return _load_task(db, task_id)
 
@@ -43,7 +38,7 @@ def get_task(
 def create_task(
     payload: schemas.TaskCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.create")),
 ):
     phase = db.query(models.Phase).filter(models.Phase.id == payload.phase_id, models.Phase.is_deleted == False).first()
     if not phase:
@@ -71,7 +66,7 @@ def update_task(
     task_id: int,
     payload: schemas.TaskUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.update")),
 ):
     task = _load_task(db, task_id)
     data = payload.model_dump(exclude_unset=True)
@@ -104,7 +99,7 @@ def update_task(
 def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.delete")),
 ):
     task = _load_task(db, task_id)
     project_module = task.phase.project_module
@@ -132,7 +127,7 @@ def add_checklist_item(
     task_id: int,
     payload: schemas.ChecklistItemCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.update")),
 ):
     _load_task(db, task_id)
     item = models.ChecklistItem(task_id=task_id, **payload.model_dump())
@@ -150,7 +145,7 @@ def update_checklist_item(
     item_id: int,
     payload: schemas.ChecklistItemUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.update")),
 ):
     item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id, models.ChecklistItem.is_deleted == False).first()
     if not item:
@@ -166,7 +161,7 @@ def update_checklist_item(
 def delete_checklist_item(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.update")),
 ):
     item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id, models.ChecklistItem.is_deleted == False).first()
     if not item:
@@ -191,7 +186,7 @@ def reorder_tasks(
     phase_id: int,
     payload: ReorderPayload,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+    current_user: models.User = Depends(require_permission("task.update")),
 ):
     """Manually reorder tasks within a phase (drag-and-drop support)."""
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
-from app.dependencies import require_role
+from app.dependencies import require_permission
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ def list_activity_logs(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator", "Management")),
+    current_user: models.User = Depends(require_permission("audit.view")),
 ):
     """Audit trail of user actions, paginated (SOP section 16 / audit logs)."""
     query = db.query(models.ActivityLog).order_by(models.ActivityLog.timestamp.desc())

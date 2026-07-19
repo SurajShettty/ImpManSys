@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas
-from app.dependencies import get_current_active_user, require_role
+from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/", response_model=List[schemas.ModuleResponse])
 def list_modules(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("module.view")),
 ):
     """The master catalogue of implementable modules (SOP section 5, stage 3)."""
     return db.query(models.Module).filter(models.Module.is_deleted == False).order_by(models.Module.name).all()
@@ -22,7 +22,7 @@ def list_modules(
 def create_module(
     payload: schemas.ModuleCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("module.create")),
 ):
     existing = db.query(models.Module).filter(models.Module.name == payload.name, models.Module.is_deleted == False).first()
     if existing:

@@ -10,9 +10,11 @@ import Users from './pages/Users'
 import SearchResults from './pages/SearchResults'
 import AuditLogs from './pages/AuditLogs'
 import RecycleBin from './pages/RecycleBin'
+import RolePermissions from './pages/RolePermissions'
 import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import RoleRoute from './components/RoleRoute'
+import PermissionRoute from './components/PermissionRoute'
 
 function App() {
   return (
@@ -34,25 +36,33 @@ function App() {
         <Route
           path="/users"
           element={
-            <RoleRoute allowedRoles={['Administrator']}>
+            <PermissionRoute permission="user.view">
               <Users />
-            </RoleRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/audit-logs"
           element={
-            <RoleRoute allowedRoles={['Administrator', 'Management']}>
+            <PermissionRoute permission="audit.view">
               <AuditLogs />
-            </RoleRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/recycle-bin"
           element={
-            <RoleRoute allowedRoles={['Administrator']}>
+            <PermissionRoute permission="recycle_bin.view">
               <RecycleBin />
-            </RoleRoute>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/role-permissions"
+          element={
+            <PermissionRoute permission="role.manage">
+              <RolePermissions />
+            </PermissionRoute>
           }
         />
       </Route>

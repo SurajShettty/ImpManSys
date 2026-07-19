@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
-from app.dependencies import require_role
+from app.dependencies import require_permission
 from app.utils.audit import log_activity
 from app.services.templates import recompute_project_module_progress
 
@@ -37,7 +37,7 @@ def _restore_project_module(db: Session, pm: models.ProjectModule) -> None:
 @router.get("/")
 def list_deleted_items(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("recycle_bin.view")),
 ):
     """The recycle bin: soft-deleted items from the last 12 hours."""
     cutoff = models.utc_now() - RETENTION
@@ -140,7 +140,7 @@ def restore_item(
     entity: str,
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("recycle_bin.restore")),
 ):
     """Restore a soft-deleted item (and its children) from the recycle bin."""
     cutoff = models.utc_now() - RETENTION

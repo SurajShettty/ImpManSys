@@ -3,13 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas
-from app.dependencies import get_current_active_user, require_role
+from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 
 router = APIRouter()
-
-# Roles allowed to create/modify implementation data.
-MANAGER_ROLES = ("Administrator", "Customer Success Manager", "Project Manager")
 
 
 def _with_counts(client: models.Client) -> models.Client:
@@ -30,7 +27,7 @@ def list_clients(
 def create_client(
     payload: schemas.ClientCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("client.create")),
 ):
     client = models.Client(**payload.model_dump())
     db.add(client)
@@ -57,7 +54,7 @@ def update_client(
     client_id: int,
     payload: schemas.ClientUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
+    current_user: models.User = Depends(require_permission("client.update")),
 ):
     client = db.query(models.Client).filter(models.Client.id == client_id).first()
     if not client:
@@ -75,7 +72,7 @@ def update_client(
 def delete_client(
     client_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("client.delete")),
 ):
     client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
     if not client:

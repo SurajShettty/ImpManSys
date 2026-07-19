@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.database import get_db
 from app import models
-from app.dependencies import get_current_active_user
+from app.dependencies import get_current_active_user, require_permission
 
 router = APIRouter()
 
@@ -12,7 +12,7 @@ router = APIRouter()
 def global_search(
     q: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("search.view")),
 ):
     """Search clients, projects, tasks, and users from one box."""
     term = f"%{q.strip()}%"

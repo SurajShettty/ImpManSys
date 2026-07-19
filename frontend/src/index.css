@@ -1198,6 +1198,73 @@ body.dark .theme-toggle::after {
   color: var(--text-muted);
 }
 
+.permission-category {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.permissions-matrix th,
+.permissions-matrix td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.permissions-matrix .permission-col-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.permissions-matrix .permission-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.permissions-matrix .permission-code {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.permissions-matrix input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+}
+
+.permissions-matrix input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Freeze the first column (role names) on horizontal scroll */
+.permissions-matrix th:first-child,
+.permissions-matrix td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+}
+
+.permissions-matrix th:first-child {
+  z-index: 3;
+}
+
+.permissions-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-muted);
+}
+
+.permissions-matrix thead th:first-child {
+  z-index: 4;
+}
+
 /* Meetings & Communication Log */
 .meetings-list {
   display: flex;

@@ -4,7 +4,7 @@ from typing import List
 from app.database import get_db
 from app import models, schemas
 from app.auth import get_password_hash
-from app.dependencies import get_current_active_user, require_role
+from app.dependencies import get_current_active_user, require_permission
 
 router = APIRouter()
 
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/", response_model=List[schemas.UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator", "Management")),
+    current_user: models.User = Depends(require_permission("user.view")),
 ):
     return db.query(models.User).filter(models.User.is_deleted == False).all()
 
@@ -21,7 +21,7 @@ def list_users(
 def create_user(
     payload: schemas.UserCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("user.create")),
 ):
     existing = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing:
@@ -48,7 +48,7 @@ def create_user(
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("user.view")),
 ):
     user = db.query(models.User).filter(models.User.id == user_id, models.User.is_deleted == False).first()
     if not user:
@@ -61,7 +61,7 @@ def update_user(
     user_id: int,
     payload: schemas.UserUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("user.update")),
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -96,7 +96,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("Administrator")),
+    current_user: models.User = Depends(require_permission("user.delete")),
 ):
     user = db.query(models.User).filter(models.User.id == user_id, models.User.is_deleted == False).first()
     if not user:

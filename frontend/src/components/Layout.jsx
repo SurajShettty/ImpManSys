@@ -43,12 +43,17 @@ export default function Layout() {
             <NavLink to="/" end className="nav-link">Dashboard</NavLink>
             <NavLink to="/clients" className="nav-link">Clients</NavLink>
             <NavLink to="/projects" className="nav-link">Projects</NavLink>
-            {user?.role_name === 'Administrator' && (
-              <>
-                <NavLink to="/users" className="nav-link">Users</NavLink>
-                <NavLink to="/audit-logs" className="nav-link">Audit Logs</NavLink>
-                <NavLink to="/recycle-bin" className="nav-link">Recycle Bin</NavLink>
-              </>
+            {user?.permissions?.includes('user.view') && (
+              <NavLink to="/users" className="nav-link">Users</NavLink>
+            )}
+            {user?.permissions?.includes('audit.view') && (
+              <NavLink to="/audit-logs" className="nav-link">Audit Logs</NavLink>
+            )}
+            {user?.permissions?.includes('recycle_bin.view') && (
+              <NavLink to="/recycle-bin" className="nav-link">Recycle Bin</NavLink>
+            )}
+            {user?.permissions?.includes('role.manage') && (
+              <NavLink to="/role-permissions" className="nav-link">Roles</NavLink>
             )}
           </div>
         </div>

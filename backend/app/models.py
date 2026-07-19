@@ -26,6 +26,31 @@ class Role(Base):
     description = Column(String(255), nullable=True)
 
     users = relationship("User", back_populates="role")
+    permissions = relationship(
+        "Permission", secondary="role_permissions", back_populates="roles"
+    )
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(80), unique=True, nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    description = Column(String(255), nullable=True)
+    category = Column(String(50), nullable=True)
+
+    roles = relationship(
+        "Role", secondary="role_permissions", back_populates="permissions"
+    )
+
+
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+
+    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
+    permission_id = Column(Integer, ForeignKey("permissions.id"), primary_key=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
 
 class User(Base):

@@ -48,10 +48,39 @@ def require_role(*allowed_roles: str):
     return role_checker
 
 
+def require_permission(*permission_codes: str):
+    """Require the current user to have any one of the listed permissions."""
+    def permission_checker(current_user: models.User = Depends(get_current_active_user)) -> models.User:
+        user_permissions = {p.code for p in current_user.role.permissions}
+        if not any(code in user_permissions for code in permission_codes):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+
+    return permission_checker
+
+
+def require_all_permissions(*permission_codes: str):
+    """Require the current user to have all listed permissions."""
+    def permission_checker(current_user: models.User = Depends(get_current_active_user)) -> models.User:
+        user_permissions = {p.code for p in current_user.role.permissions}
+        if not all(code in user_permissions for code in permission_codes):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+
+    return permission_checker
+
+
 def user_to_token_schema(user: models.User) -> schemas.UserInToken:
     return schemas.UserInToken(
         id=user.id,
         email=user.email,
         role_id=user.role_id,
         role_name=user.role.name,
+        permissions=[p.code for p in user.role.permissions],
     )

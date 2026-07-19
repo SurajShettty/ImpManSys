@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
-from app.dependencies import get_current_active_user
+from app.dependencies import get_current_active_user, require_permission
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ ACTIVE_PROJECT_STATUSES = ("Not Started", "In Progress", "On Hold")
 @router.get("/summary")
 def dashboard_summary(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(require_permission("dashboard.view")),
 ):
     """Management dashboard cards (SOP section 16 / UI-UX dashboard)."""
     today = date.today()
