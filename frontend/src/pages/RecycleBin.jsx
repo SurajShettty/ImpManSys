@@ -92,7 +92,8 @@ export default function RecycleBin() {
     bin.clients.length === 0 &&
     bin.projects.length === 0 &&
     bin.tasks.length === 0 &&
-    bin.users.length === 0
+    bin.users.length === 0 &&
+    bin.meetings.length === 0
 
   return (
     <div>
@@ -164,6 +165,20 @@ export default function RecycleBin() {
               <>
                 <strong>{u.name}</strong>
                 <span className="muted"> · {u.email}</span>
+              </>
+            )}
+          />
+          <Section
+            title="Meetings"
+            entity="meetings"
+            items={bin.meetings}
+            restoring={restoring}
+            onRestore={restore}
+            now={now}
+            render={(m) => (
+              <>
+                <strong>{m.title}</strong>
+                <span className="muted"> · {m.project_name || 'Project unavailable'}</span>
               </>
             )}
           />

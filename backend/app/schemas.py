@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, date
 from pydantic import BaseModel, EmailStr, ConfigDict
 
@@ -88,6 +90,13 @@ class UserBrief(BaseModel):
     id: int
     name: str
     email: str  # plain string on output to avoid strict email validation for existing data
+
+
+# ---------- Reusable mini project ----------
+class ProjectBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
 
 
 # ---------- Client ----------
@@ -276,6 +285,42 @@ class ProjectModuleResponse(BaseModel):
 
 class ProjectModuleDetail(ProjectModuleResponse):
     phases: list[PhaseResponse] = []
+
+
+# ---------- Meeting ----------
+class MeetingBase(BaseModel):
+    title: str
+    meeting_date: date
+    participants: str | None = None
+    discussion: str | None = None
+    decisions: str | None = None
+    action_items: str | None = None
+    next_follow_up: date | None = None
+
+
+class MeetingCreate(MeetingBase):
+    pass
+
+
+class MeetingUpdate(BaseModel):
+    title: str | None = None
+    meeting_date: date | None = None
+    participants: str | None = None
+    discussion: str | None = None
+    decisions: str | None = None
+    action_items: str | None = None
+    next_follow_up: date | None = None
+
+
+class MeetingResponse(MeetingBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    project_id: int
+    created_by: int | None = None
+    created_at: datetime
+    updated_at: datetime
+    creator: UserBrief | None = None
+    project: ProjectBrief | None = None
 
 
 # ---------- Generic ----------

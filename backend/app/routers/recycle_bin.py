@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -66,6 +66,12 @@ def list_deleted_items(
         .order_by(models.User.deleted_at.desc())
         .all()
     )
+    meetings = (
+        db.query(models.Meeting)
+        .filter(models.Meeting.is_deleted == True, models.Meeting.deleted_at >= cutoff)
+        .order_by(models.Meeting.deleted_at.desc())
+        .all()
+    )
 
     def expires(dt):
         return (dt + RETENTION).isoformat() if dt else None
@@ -115,6 +121,17 @@ def list_deleted_items(
             }
             for u in users
         ],
+        "meetings": [
+            {
+                "id": m.id,
+                "title": m.title,
+                "project_id": m.project_id,
+                "project_name": m.project.name if m.project else None,
+                "deleted_at": m.deleted_at.isoformat() if m.deleted_at else None,
+                "expires_at": expires(m.deleted_at),
+            }
+            for m in meetings
+        ],
     }
 
 
@@ -129,7 +146,13 @@ def restore_item(
     cutoff = models.utc_now() - RETENTION
 
     def _not_expired(item):
-        if item.deleted_at is None or item.deleted_at < cutoff:
+        if item.deleted_at is None:
+            raise HTTPException(status_code=400, detail="Restore window has expired")
+        # Ensure both datetimes are offset-aware UTC before comparing.
+        deleted_at = item.deleted_at
+        if deleted_at.tzinfo is None:
+            deleted_at = deleted_at.replace(tzinfo=timezone.utc)
+        if deleted_at < cutoff:
             raise HTTPException(status_code=400, detail="Restore window has expired")
 
     if entity == "clients":
@@ -172,6 +195,16 @@ def restore_item(
         if not item:
             raise HTTPException(status_code=404, detail="User not found in recycle bin")
         _not_expired(item)
+        item.is_deleted = False
+        item.deleted_at = None
+
+    elif entity == "meetings":
+        item = db.query(models.Meeting).filter(models.Meeting.id == item_id, models.Meeting.is_deleted == True).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Meeting not found in recycle bin")
+        _not_expired(item)
+        if item.project and item.project.is_deleted:
+            raise HTTPException(status_code=400, detail="Restore the parent project first")
         item.is_deleted = False
         item.deleted_at = None
 

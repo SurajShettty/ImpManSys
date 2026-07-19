@@ -31,6 +31,16 @@ const PROJECT_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 
 
 const EDITABLE_FIELDS = ['name', 'description', 'type', 'status', 'start_date', 'end_date']
 
+const EMPTY_MEETING = {
+  title: '',
+  meeting_date: '',
+  participants: '',
+  discussion: '',
+  decisions: '',
+  action_items: '',
+  next_follow_up: '',
+}
+
 function toForm(project) {
   const f = {}
   for (const key of EDITABLE_FIELDS) {
@@ -53,12 +63,19 @@ export default function ProjectDetail() {
   const [editForm, setEditForm] = useState({})
   const [savingEdit, setSavingEdit] = useState(false)
   const [newChecklist, setNewChecklist] = useState({})
+  const [meetings, setMeetings] = useState([])
+  const [meetingModalOpen, setMeetingModalOpen] = useState(false)
+  const [editingMeeting, setEditingMeeting] = useState(null)
+  const [meetingForm, setMeetingForm] = useState(EMPTY_MEETING)
+  const [savingMeeting, setSavingMeeting] = useState(false)
+  const [expandedMeetings, setExpandedMeetings] = useState({})
 
   const loadPlan = () =>
-    Promise.all([api.get(`/projects/${id}`), api.get(`/projects/${id}/plan`)]).then(
-      ([p, pl]) => {
+    Promise.all([api.get(`/projects/${id}`), api.get(`/projects/${id}/plan`), api.get(`/projects/${id}/meetings`)]).then(
+      ([p, pl, m]) => {
         setProject(p.data)
         setPlan(pl.data)
+        setMeetings(m.data)
       }
     )
 
@@ -272,6 +289,65 @@ export default function ProjectDetail() {
     }
   }
 
+  const openMeetingModal = (meeting = null) => {
+    setEditingMeeting(meeting)
+    setMeetingForm(
+      meeting
+        ? {
+            title: meeting.title || '',
+            meeting_date: meeting.meeting_date || '',
+            participants: meeting.participants || '',
+            discussion: meeting.discussion || '',
+            decisions: meeting.decisions || '',
+            action_items: meeting.action_items || '',
+            next_follow_up: meeting.next_follow_up || '',
+          }
+        : EMPTY_MEETING
+    )
+    setMeetingModalOpen(true)
+    setError('')
+  }
+
+  const closeMeetingModal = () => {
+    setMeetingModalOpen(false)
+    setEditingMeeting(null)
+    setMeetingForm(EMPTY_MEETING)
+  }
+
+  const submitMeeting = async (e) => {
+    e.preventDefault()
+    setSavingMeeting(true)
+    setError('')
+    try {
+      const payload = { ...meetingForm }
+      for (const key of Object.keys(payload)) {
+        if (payload[key] === '') payload[key] = null
+      }
+      if (editingMeeting) {
+        await api.put(`/projects/${id}/meetings/${editingMeeting.id}`, payload)
+      } else {
+        await api.post(`/projects/${id}/meetings`, payload)
+      }
+      closeMeetingModal()
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to save meeting')
+    } finally {
+      setSavingMeeting(false)
+    }
+  }
+
+  const deleteMeeting = async (meeting) => {
+    if (!window.confirm(`Delete meeting "${meeting.title}"?`)) return
+    setError('')
+    try {
+      await api.delete(`/projects/${id}/meetings/${meeting.id}`)
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete meeting')
+    }
+  }
+
   if (!project) return <div className="muted">{error || 'Loading…'}</div>
 
   return (
@@ -413,6 +489,72 @@ export default function ProjectDetail() {
         </div>
       )}
 
+      {/* Meetings & Communication Log */}
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="page-header" style={{ marginTop: 0 }}>
+          <h3 style={{ margin: 0 }}>Meetings & Communication Log</h3>
+          <button className="btn btn-primary btn-sm" onClick={() => openMeetingModal()}>
+            + Add Meeting
+          </button>
+        </div>
+        {meetings.length === 0 ? (
+          <p className="muted">No meetings recorded yet.</p>
+        ) : (
+          <div className="meetings-list">
+            {meetings.map((m) => {
+              const isExpanded = expandedMeetings[m.id]
+              return (
+                <div className="meeting-card" key={m.id}>
+                  <div className="meeting-summary">
+                    <button
+                      type="button"
+                      className="meeting-toggle"
+                      onClick={() => setExpandedMeetings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
+                      aria-label={isExpanded ? 'Collapse meeting' : 'Expand meeting'}
+                      title={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      {isExpanded ? '▼' : '▶'}
+                    </button>
+                    <div className="meeting-summary-text">
+                      <strong className="meeting-title">{m.title}</strong>
+                      <span className="muted">{m.meeting_date}</span>
+                      {m.participants && <span className="muted">• {m.participants}</span>}
+                      {m.next_follow_up && <span className="muted">• Next: {m.next_follow_up}</span>}
+                    </div>
+                    <div className="actions">
+                      <button className="btn btn-secondary btn-sm" onClick={() => openMeetingModal(m)}>Edit</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => deleteMeeting(m)}>Delete</button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="meeting-details">
+                      {m.discussion && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Discussion / MoM</span>
+                          <p>{m.discussion}</p>
+                        </div>
+                      )}
+                      {m.decisions && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Decisions</span>
+                          <p>{m.decisions}</p>
+                        </div>
+                      )}
+                      {m.action_items && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Action Items</span>
+                          <p>{m.action_items}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {plan.length === 0 && <div className="muted">No modules added yet.</div>}
 
       {plan.map((pm) => (
@@ -480,6 +622,7 @@ export default function ProjectDetail() {
                             <select
                               value={task.status}
                               onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                              className={`status-select status-${task.status?.toLowerCase().replace(/ /g, '-')}`}
                             >
                               {TASK_STATUSES.map((s) => <option key={s}>{s}</option>)}
                             </select>
@@ -555,6 +698,90 @@ export default function ProjectDetail() {
           )}
         </div>
       ))}
+
+      {meetingModalOpen && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeMeetingModal() }}>
+          <div className="modal">
+            <div className="modal-header">
+              <h3>{editingMeeting ? 'Edit Meeting' : 'Add Meeting'}</h3>
+              <button className="modal-close" onClick={closeMeetingModal}>×</button>
+            </div>
+            <form onSubmit={submitMeeting}>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div>
+                    <label>Title *</label>
+                    <input
+                      value={meetingForm.title}
+                      onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label>Date *</label>
+                    <input
+                      type="date"
+                      value={meetingForm.meeting_date}
+                      onChange={(e) => setMeetingForm({ ...meetingForm, meeting_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label>Participants</label>
+                    <input
+                      value={meetingForm.participants}
+                      onChange={(e) => setMeetingForm({ ...meetingForm, participants: e.target.value })}
+                      placeholder="e.g. John, Jane, Client POC"
+                    />
+                  </div>
+                  <div>
+                    <label>Next Follow-up</label>
+                    <input
+                      type="date"
+                      value={meetingForm.next_follow_up}
+                      onChange={(e) => setMeetingForm({ ...meetingForm, next_follow_up: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                  <label>Discussion / MoM</label>
+                  <textarea
+                    rows={3}
+                    value={meetingForm.discussion}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, discussion: e.target.value })}
+                    placeholder="Key points discussed..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Decisions</label>
+                  <textarea
+                    rows={2}
+                    value={meetingForm.decisions}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, decisions: e.target.value })}
+                    placeholder="Decisions made in the meeting..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Action Items</label>
+                  <textarea
+                    rows={2}
+                    value={meetingForm.action_items}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, action_items: e.target.value })}
+                    placeholder="Who does what by when..."
+                  />
+                </div>
+                {error && <div className="error" style={{ marginBottom: 0 }}>{error}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={closeMeetingModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={savingMeeting}>
+                  {savingMeeting ? 'Saving…' : (editingMeeting ? 'Update Meeting' : 'Add Meeting')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

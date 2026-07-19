@@ -112,6 +112,9 @@ class Project(Base):
     project_modules = relationship(
         "ProjectModule", back_populates="project", cascade="all, delete-orphan"
     )
+    meetings = relationship(
+        "Meeting", back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Module(Base):
@@ -228,3 +231,27 @@ class TaskDependency(Base):
 
     task = relationship("Task", back_populates="dependencies", foreign_keys=[task_id])
     depends_on = relationship("Task", foreign_keys=[depends_on_task_id])
+
+
+class Meeting(Base):
+    """Meeting & Communication Log (MoMs, decisions, action items)."""
+
+    __tablename__ = "meetings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    meeting_date = Column(Date, nullable=False)
+    participants = Column(String(255), nullable=True)
+    discussion = Column(Text, nullable=True)
+    decisions = Column(Text, nullable=True)
+    action_items = Column(Text, nullable=True)
+    next_follow_up = Column(Date, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    project = relationship("Project", back_populates="meetings")
+    creator = relationship("User")

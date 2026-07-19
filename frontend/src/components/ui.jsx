@@ -4,7 +4,7 @@ import React from 'react'
 const STATUS_COLOURS = {
   // Generic / project / module
   'Not Started': 'grey',
-  'In Progress': 'theme',
+  'In Progress': 'blue',
   'On Hold': 'amber',
   'Completed': 'green',
   'Cancelled': 'red',

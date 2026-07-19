@@ -104,6 +104,32 @@ def delete_client(
     log_activity(db, current_user.id, "client", "delete", f"Deleted client #{client_id}")
 
 
+@router.get("/{client_id}/meetings", response_model=List[schemas.MeetingResponse])
+def list_client_meetings(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    """All meetings across all projects for this client."""
+    client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    project_ids = [p.id for p in client.projects if not p.is_deleted]
+    if not project_ids:
+        return []
+
+    return (
+        db.query(models.Meeting)
+        .filter(
+            models.Meeting.project_id.in_(project_ids),
+            models.Meeting.is_deleted == False,
+        )
+        .order_by(models.Meeting.meeting_date.desc(), models.Meeting.created_at.desc())
+        .all()
+    )
+
+
 @router.get("/{client_id}/projects", response_model=List[schemas.ProjectResponse])
 def list_client_projects(
     client_id: int,

@@ -47,6 +47,8 @@ export default function ClientDetail() {
   const [projects, setProjects] = useState([])
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
+  const [meetings, setMeetings] = useState([])
+  const [expandedMeetings, setExpandedMeetings] = useState({})
 
   // Project creation
   const [showForm, setShowForm] = useState(false)
@@ -59,10 +61,15 @@ export default function ClientDetail() {
   const [savingEdit, setSavingEdit] = useState(false)
 
   const load = () => {
-    Promise.all([api.get(`/clients/${id}`), api.get(`/clients/${id}/projects`)])
-      .then(([c, p]) => {
+    Promise.all([
+      api.get(`/clients/${id}`),
+      api.get(`/clients/${id}/projects`),
+      api.get(`/clients/${id}/meetings`),
+    ])
+      .then(([c, p, m]) => {
         setClient(c.data)
         setProjects(p.data)
+        setMeetings(m.data)
       })
       .catch(() => setError('Failed to load client'))
     // Users power the CSM / PM dropdowns. Non-fatal if the role can't list users.
@@ -286,6 +293,72 @@ export default function ClientDetail() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <h3 style={{ marginTop: 0 }}>All Meetings & Communication Log</h3>
+        {meetings.length === 0 ? (
+          <p className="muted">No meetings recorded across this client's projects.</p>
+        ) : (
+          <div className="meetings-list">
+            {meetings.map((m) => {
+              const isExpanded = expandedMeetings[m.id]
+              return (
+                <div className="meeting-card" key={m.id}>
+                  <div className="meeting-summary">
+                    <button
+                      type="button"
+                      className="meeting-toggle"
+                      onClick={() => setExpandedMeetings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
+                      aria-label={isExpanded ? 'Collapse meeting' : 'Expand meeting'}
+                      title={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      {isExpanded ? '▼' : '▶'}
+                    </button>
+                    <div className="meeting-summary-text">
+                      <strong className="meeting-title">{m.title}</strong>
+                      <span className="muted">{m.meeting_date}</span>
+                      {m.participants && <span className="muted">• {m.participants}</span>}
+                      {m.project && (
+                        <span className="muted">
+                          • <Link to={`/projects/${m.project_id}`}>{m.project.name}</Link>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="meeting-details">
+                      {m.discussion && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Discussion / MoM</span>
+                          <p>{m.discussion}</p>
+                        </div>
+                      )}
+                      {m.decisions && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Decisions</span>
+                          <p>{m.decisions}</p>
+                        </div>
+                      )}
+                      {m.action_items && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Action Items</span>
+                          <p>{m.action_items}</p>
+                        </div>
+                      )}
+                      {m.next_follow_up && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Next Follow-up</span>
+                          <p>{m.next_follow_up}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
