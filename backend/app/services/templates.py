@@ -64,8 +64,8 @@ def generate_module_plan(db: Session, project_module: models.ProjectModule) -> N
             sequence=sequence,
         )
         db.add(phase)
-        for title in task_titles:
-            db.add(models.Task(phase=phase, title=title))
+        for task_seq, title in enumerate(task_titles, start=1):
+            db.add(models.Task(phase=phase, title=title, sequence=task_seq))
 
 
 def _task_progress(task: models.Task) -> float:

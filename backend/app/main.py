@@ -14,6 +14,9 @@ from app.routers import (
     modules,
     tasks,
     dashboard,
+    search,
+    audit_logs,
+    recycle_bin,
 )
 
 settings = get_settings()
@@ -60,3 +63,6 @@ app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(search.router, prefix="/api/search", tags=["search"])
+app.include_router(audit_logs.router, prefix="/api/audit-logs", tags=["audit-logs"])
+app.include_router(recycle_bin.router, prefix="/api/recycle-bin", tags=["recycle-bin"])

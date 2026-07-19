@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme')
     return saved === 'dark'
@@ -21,6 +23,14 @@ export default function Layout() {
 
   const toggleDarkMode = () => setDarkMode((d) => !d)
 
+  const submitSearch = (e) => {
+    e.preventDefault()
+    const q = searchQuery.trim()
+    if (q) {
+      navigate(`/search?q=${encodeURIComponent(q)}`)
+    }
+  }
+
   return (
     <div>
       <nav className="navbar">
@@ -34,11 +44,24 @@ export default function Layout() {
             <NavLink to="/clients" className="nav-link">Clients</NavLink>
             <NavLink to="/projects" className="nav-link">Projects</NavLink>
             {user?.role_name === 'Administrator' && (
-              <NavLink to="/users" className="nav-link">Users</NavLink>
+              <>
+                <NavLink to="/users" className="nav-link">Users</NavLink>
+                <NavLink to="/audit-logs" className="nav-link">Audit Logs</NavLink>
+                <NavLink to="/recycle-bin" className="nav-link">Recycle Bin</NavLink>
+              </>
             )}
           </div>
         </div>
         <div className="navbar-user">
+          <form onSubmit={submitSearch} className="navbar-search">
+            <input
+              type="search"
+              placeholder="Search…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Global search"
+            />
+          </form>
           <button
             className="theme-toggle"
             onClick={toggleDarkMode}

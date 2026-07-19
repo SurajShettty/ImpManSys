@@ -21,7 +21,7 @@ const STATUS_COLOURS = {
 const PRIORITY_COLOURS = {
   Critical: 'red',
   High: 'amber',
-  Medium: 'theme',
+  Medium: 'blue',
   Low: 'grey',
 }
 

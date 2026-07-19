@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, PriorityBadge, ProgressBar } from '../components/ui'
+import { PhaseTimeline, GanttTimeline } from '../components/Timeline'
 
 const TASK_STATUSES = [
   'Not Started',
@@ -71,6 +72,17 @@ export default function ProjectDetail() {
 
   const usedModuleIds = new Set(plan.map((pm) => pm.module_id))
   const available = catalog.filter((m) => !usedModuleIds.has(m.id))
+  // Group available modules by category for the add-module dropdown.
+  const moduleGroups = available.reduce((groups, m) => {
+    const cat = m.category || 'Other'
+    const existing = groups.find(([name]) => name === cat)
+    if (existing) {
+      existing[1].push(m)
+    } else {
+      groups.push([cat, [m]])
+    }
+    return groups
+  }, [])
 
   const addModule = async () => {
     if (!selectedModule) return
@@ -109,6 +121,77 @@ export default function ProjectDetail() {
       await loadPlan()
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update task priority')
+    }
+  }
+
+  const updateTaskDueDate = async (taskId, dueDate) => {
+    setError('')
+    try {
+      await api.put(`/tasks/${taskId}`, { due_date: dueDate || null })
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update due date')
+    }
+  }
+
+  const isOverdue = (task) =>
+    task.due_date &&
+    task.status !== 'Completed' &&
+    task.status !== 'Cancelled' &&
+    new Date(task.due_date) < new Date(new Date().toDateString())
+
+  // ----- Drag-and-drop task reordering -----
+  const dragRef = React.useRef({ phaseId: null, taskId: null })
+
+  const onDragStart = (e, phaseId, taskId) => {
+    dragRef.current = { phaseId, taskId }
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const onDragOver = (e, phaseId) => {
+    if (dragRef.current.phaseId === phaseId) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+    }
+  }
+
+  const onDrop = async (e, phaseId, targetTaskId) => {
+    e.preventDefault()
+    const { phaseId: srcPhaseId, taskId: srcTaskId } = dragRef.current
+    if (srcPhaseId !== phaseId || srcTaskId === targetTaskId) return
+
+    // Optimistically reorder in local state.
+    setPlan((prev) =>
+      prev.map((pm) => ({
+        ...pm,
+        phases: pm.phases.map((phase) => {
+          if (phase.id !== phaseId) return phase
+          const ids = phase.tasks.map((t) => t.id)
+          const from = ids.indexOf(srcTaskId)
+          const to = ids.indexOf(targetTaskId)
+          if (from === -1 || to === -1) return phase
+          const reordered = [...phase.tasks]
+          const [moved] = reordered.splice(from, 1)
+          reordered.splice(to, 0, moved)
+          return { ...phase, tasks: reordered }
+        }),
+      }))
+    )
+
+    try {
+      const phase = plan
+        .flatMap((pm) => pm.phases)
+        .find((p) => p.id === phaseId)
+      if (phase) {
+        const ids = phase.tasks.map((t) => t.id)
+        const from = ids.indexOf(srcTaskId)
+        const to = ids.indexOf(targetTaskId)
+        ids.splice(to, 0, ids.splice(from, 1)[0])
+        await api.post(`/tasks/reorder/${phaseId}`, { ordered_task_ids: ids })
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to reorder tasks')
+      await loadPlan()
     }
   }
 
@@ -277,18 +360,58 @@ export default function ProjectDetail() {
 
       <div className="page-header">
         <h3 style={{ margin: 0 }}>Modules & Implementation Plan</h3>
-        <div className="inline-form">
-          <select value={selectedModule} onChange={(e) => setSelectedModule(e.target.value)}>
-            <option value="">Select module…</option>
-            {available.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        <div className="add-module-control">
+          <select
+            value={selectedModule}
+            onChange={(e) => setSelectedModule(e.target.value)}
+            className="add-module-select"
+          >
+            <option value="">Select a module to add…</option>
+            {moduleGroups.map(([category, mods]) => (
+              <optgroup key={category} label={category}>
+                {mods.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
-          <button className="btn btn-primary btn-sm" onClick={addModule} disabled={busy || !selectedModule}>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={addModule}
+            disabled={busy || !selectedModule}
+          >
             + Add Module
           </button>
         </div>
       </div>
       {error && <div className="error">{error}</div>}
       <p className="muted">Adding a module auto-generates its 7-phase implementation plan.</p>
+
+      {plan.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
+          {plan.map((pm) => (
+            <div key={`timeline-${pm.id}`} style={{ marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong>{pm.module?.name}</strong>
+                <span className="muted">{pm.progress}%</span>
+              </div>
+              <PhaseTimeline phases={pm.phases} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {plan.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ marginTop: 0 }}>Gantt Timeline</h3>
+          <GanttTimeline
+            projectModules={plan}
+            projectStart={project.start_date}
+            projectEnd={project.end_date}
+          />
+        </div>
+      )}
 
       {plan.length === 0 && <div className="muted">No modules added yet.</div>}
 
@@ -318,17 +441,29 @@ export default function ProjectDetail() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th style={{ width: '25%' }}>Task</th>
+                        <th style={{ width: '1%' }} aria-label="Reorder"></th>
+                        <th style={{ width: '22%' }}>Task</th>
                         <th>Priority</th>
                         <th>Status</th>
+                        <th>Due Date</th>
                         <th>Progress</th>
                         <th>Checklist</th>
                         <th style={{ width: '1%', textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {phase.tasks.map((task) => (
-                        <tr key={task.id}>
+                      {phase.tasks.map((task) => {
+                        const overdue = isOverdue(task)
+                        return (
+                        <tr
+                          key={task.id}
+                          className={overdue ? 'task-overdue' : ''}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, phase.id, task.id)}
+                          onDragOver={(e) => onDragOver(e, phase.id)}
+                          onDrop={(e) => onDrop(e, phase.id, task.id)}
+                        >
+                          <td className="drag-handle" title="Drag to reorder">⠿</td>
                           <td>{task.title}</td>
                           <td>
                             <select
@@ -348,6 +483,15 @@ export default function ProjectDetail() {
                             >
                               {TASK_STATUSES.map((s) => <option key={s}>{s}</option>)}
                             </select>
+                          </td>
+                          <td>
+                            <input
+                              type="date"
+                              value={task.due_date || ''}
+                              onChange={(e) => updateTaskDueDate(task.id, e.target.value)}
+                              className={overdue ? 'due-date-input overdue' : 'due-date-input'}
+                            />
+                            {overdue && <span className="badge badge-red" style={{ marginLeft: '0.25rem' }}>Overdue</span>}
                           </td>
                           <td style={{ minWidth: 120 }}><ProgressBar value={task.progress} /></td>
                           <td>
@@ -401,7 +545,8 @@ export default function ProjectDetail() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -83,15 +83,21 @@ def delete_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    now = models.utc_now()
     project.is_deleted = True
+    project.deleted_at = now
     for project_module in project.project_modules:
         project_module.is_deleted = True
+        project_module.deleted_at = now
         for phase in project_module.phases:
             phase.is_deleted = True
+            phase.deleted_at = now
             for task in phase.tasks:
                 task.is_deleted = True
+                task.deleted_at = now
                 for item in task.checklist_items:
                     item.is_deleted = True
+                    item.deleted_at = now
 
     db.commit()
     log_activity(db, current_user.id, "project", "delete", f"Deleted project #{project_id}")
@@ -183,13 +189,18 @@ def remove_project_module(
         raise HTTPException(status_code=404, detail="Project module not found")
 
     project = project_module.project
+    now = models.utc_now()
     project_module.is_deleted = True
+    project_module.deleted_at = now
     for phase in project_module.phases:
         phase.is_deleted = True
+        phase.deleted_at = now
         for task in phase.tasks:
             task.is_deleted = True
+            task.deleted_at = now
             for item in task.checklist_items:
                 item.is_deleted = True
+                item.deleted_at = now
 
     db.commit()
     recompute_project_progress(db, project)

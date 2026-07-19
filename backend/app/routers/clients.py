@@ -81,17 +81,24 @@ def delete_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
+    now = models.utc_now()
     client.is_deleted = True
+    client.deleted_at = now
     for project in client.projects:
         project.is_deleted = True
+        project.deleted_at = now
         for project_module in project.project_modules:
             project_module.is_deleted = True
+            project_module.deleted_at = now
             for phase in project_module.phases:
                 phase.is_deleted = True
+                phase.deleted_at = now
                 for task in phase.tasks:
                     task.is_deleted = True
+                    task.deleted_at = now
                     for item in task.checklist_items:
                         item.is_deleted = True
+                        item.deleted_at = now
 
     db.commit()
     log_activity(db, current_user.id, "client", "delete", f"Deleted client #{client_id}")

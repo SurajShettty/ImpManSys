@@ -7,6 +7,9 @@ import ClientDetail from './pages/ClientDetail'
 import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
 import Users from './pages/Users'
+import SearchResults from './pages/SearchResults'
+import AuditLogs from './pages/AuditLogs'
+import RecycleBin from './pages/RecycleBin'
 import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import RoleRoute from './components/RoleRoute'
@@ -27,11 +30,28 @@ function App() {
         <Route path="/clients/:id" element={<ClientDetail />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/search" element={<SearchResults />} />
         <Route
           path="/users"
           element={
             <RoleRoute allowedRoles={['Administrator']}>
               <Users />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/audit-logs"
+          element={
+            <RoleRoute allowedRoles={['Administrator', 'Management']}>
+              <AuditLogs />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/recycle-bin"
+          element={
+            <RoleRoute allowedRoles={['Administrator']}>
+              <RecycleBin />
             </RoleRoute>
           }
         />

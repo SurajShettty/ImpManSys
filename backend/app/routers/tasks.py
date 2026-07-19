@@ -50,6 +50,13 @@ def create_task(
         raise HTTPException(status_code=400, detail="Phase not found")
 
     task = models.Task(**payload.model_dump())
+    # Place new tasks at the end of their phase by default.
+    max_seq = (
+        db.query(models.Task)
+        .filter(models.Task.phase_id == payload.phase_id, models.Task.is_deleted == False)
+        .count()
+    )
+    task.sequence = max_seq + 1
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -101,9 +108,12 @@ def delete_task(
 ):
     task = _load_task(db, task_id)
     project_module = task.phase.project_module
+    now = models.utc_now()
     task.is_deleted = True
+    task.deleted_at = now
     for item in task.checklist_items:
         item.is_deleted = True
+        item.deleted_at = now
     db.commit()
     recompute_project_module_progress(db, project_module)
     db.commit()
@@ -162,4 +172,36 @@ def delete_checklist_item(
     if not item:
         raise HTTPException(status_code=404, detail="Checklist item not found")
     item.is_deleted = True
+    item.deleted_at = models.utc_now()
     db.commit()
+
+
+# ---------- Reordering ----------
+
+
+from pydantic import BaseModel as PydanticBaseModel
+
+
+class ReorderPayload(PydanticBaseModel):
+    ordered_task_ids: list[int]
+
+
+@router.post("/reorder/{phase_id}", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_tasks(
+    phase_id: int,
+    payload: ReorderPayload,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
+):
+    """Manually reorder tasks within a phase (drag-and-drop support)."""
+    phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="Phase not found")
+
+    tasks = {t.id: t for t in phase.tasks if not t.is_deleted}
+    for position, task_id in enumerate(payload.ordered_task_ids, start=1):
+        task = tasks.get(task_id)
+        if task:
+            task.sequence = position
+    db.commit()
+    log_activity(db, current_user.id, "phase", "reorder", f"Reordered tasks in phase #{phase_id}")
