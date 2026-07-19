@@ -14,6 +14,8 @@ const TASK_STATUSES = [
   'Cancelled',
 ]
 
+const TASK_PRIORITIES = ['Critical', 'High', 'Medium', 'Low']
+
 const PROJECT_TYPES = [
   'New Implementation',
   'Additional Module',
@@ -100,6 +102,16 @@ export default function ProjectDetail() {
     await loadPlan()
   }
 
+  const updateTaskPriority = async (taskId, priority) => {
+    setError('')
+    try {
+      await api.put(`/tasks/${taskId}`, { priority })
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update task priority')
+    }
+  }
+
   const toggleChecklist = async (itemId, completed) => {
     await api.put(`/tasks/checklist/${itemId}`, { completed })
     await loadPlan()
@@ -115,6 +127,16 @@ export default function ProjectDetail() {
       await loadPlan()
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to add checklist item')
+    }
+  }
+
+  const deleteChecklistItem = async (itemId) => {
+    setError('')
+    try {
+      await api.delete(`/tasks/checklist/${itemId}`)
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to delete checklist item')
     }
   }
 
@@ -308,7 +330,17 @@ export default function ProjectDetail() {
                       {phase.tasks.map((task) => (
                         <tr key={task.id}>
                           <td>{task.title}</td>
-                          <td><PriorityBadge value={task.priority} /></td>
+                          <td>
+                            <select
+                              value={task.priority}
+                              onChange={(e) => updateTaskPriority(task.id, e.target.value)}
+                              className={`priority-select priority-${task.priority?.toLowerCase()}`}
+                            >
+                              {TASK_PRIORITIES.map((p) => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                          </td>
                           <td>
                             <select
                               value={task.status}
@@ -328,7 +360,16 @@ export default function ProjectDetail() {
                                       checked={ci.completed}
                                       onChange={(e) => toggleChecklist(ci.id, e.target.checked)}
                                     />
-                                    {ci.item}
+                                    <span style={{ flex: 1 }}>{ci.item}</span>
+                                    <button
+                                      type="button"
+                                      className="checklist-delete"
+                                      onClick={() => deleteChecklistItem(ci.id)}
+                                      aria-label={`Delete checklist item "${ci.item}"`}
+                                      title="Delete checklist item"
+                                    >
+                                      ×
+                                    </button>
                                   </li>
                                 ))}
                               </ul>

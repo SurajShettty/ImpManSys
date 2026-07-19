@@ -515,6 +515,29 @@ body.dark .form-row select:focus {
 
 .checklist { list-style: none; padding-left: 0; margin: 0.4rem 0; }
 .checklist li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; padding: 0.15rem 0; color: var(--text-body); }
+.checklist li span { flex: 1; }
+
+.checklist-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.checklist-delete:hover {
+  background: var(--badge-red-bg);
+  color: var(--badge-red-text);
+}
+
+.checklist-delete:focus {
+  outline: 2px solid var(--primary-red);
+  outline-offset: -1px;
+}
 
 .stat-grid {
   display: grid;
@@ -526,6 +549,72 @@ body.dark .form-row select:focus {
 .stat-label { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
 .inline-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+/* Compact priority dropdown */
+.priority-select {
+  width: auto;
+  padding: 0.3rem 2rem 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background-color: var(--bg-input);
+  color: var(--text-body);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236c757d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.priority-select:hover {
+  border-color: var(--primary-red);
+}
+
+.priority-select:focus {
+  border-color: var(--primary-red);
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.12);
+  outline: none;
+}
+
+body.dark .priority-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23a0a0a0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Priority colors (like badges) */
+.priority-select.priority-critical {
+  background-color: var(--badge-red-bg);
+  color: var(--badge-red-text);
+  border-color: transparent;
+}
+
+.priority-select.priority-high {
+  background-color: var(--badge-amber-bg);
+  color: var(--badge-amber-text);
+  border-color: transparent;
+}
+
+.priority-select.priority-medium {
+  background-color: var(--primary-red-lighter);
+  color: var(--primary-red-text);
+  border-color: transparent;
+}
+
+.priority-select.priority-low {
+  background-color: var(--badge-grey-bg);
+  color: var(--badge-grey-text);
+  border-color: transparent;
+}
+
+/* Keep dropdown options normal colored */
+.priority-select option {
+  background-color: var(--bg-input);
+  color: var(--text-body);
+}
 
 /* Modal */
 .modal-overlay {
