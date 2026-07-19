@@ -85,7 +85,7 @@ def recompute_project_module_progress(
         t
         for phase in project_module.phases
         for t in phase.tasks
-        if t.status != "Cancelled"
+        if t.status != "Cancelled" and not t.is_deleted
     ]
     if tasks:
         project_module.progress = round(
@@ -106,7 +106,7 @@ def recompute_project_module_progress(
 
 def recompute_project_progress(db: Session, project: models.Project) -> None:
     """Average module progress into the parent project's progress and status."""
-    modules = project.project_modules
+    modules = [m for m in project.project_modules if not m.is_deleted]
     if modules:
         project.progress = round(
             sum(m.progress or 0.0 for m in modules) / len(modules), 2

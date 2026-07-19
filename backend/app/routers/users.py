@@ -14,7 +14,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role("Administrator", "Management")),
 ):
-    return db.query(models.User).all()
+    return db.query(models.User).filter(models.User.is_deleted == False).all()
 
 
 @router.post("/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
@@ -50,7 +50,7 @@ def get_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role("Administrator")),
 ):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.is_deleted == False).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -98,8 +98,8 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role("Administrator")),
 ):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.is_deleted == False).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
+    user.is_deleted = True
     db.commit()

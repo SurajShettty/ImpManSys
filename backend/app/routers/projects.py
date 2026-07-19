@@ -18,7 +18,7 @@ def list_projects(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    query = db.query(models.Project)
+    query = db.query(models.Project).filter(models.Project.is_deleted == False)
     if client_id is not None:
         query = query.filter(models.Project.client_id == client_id)
     return query.order_by(models.Project.created_at.desc()).all()
@@ -30,7 +30,7 @@ def create_project(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
 ):
-    client = db.query(models.Client).filter(models.Client.id == payload.client_id).first()
+    client = db.query(models.Client).filter(models.Client.id == payload.client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=400, detail="Client not found")
 
@@ -48,7 +48,7 @@ def get_project(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
@@ -61,7 +61,7 @@ def update_project(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
 ):
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -79,10 +79,20 @@ def delete_project(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role("Administrator", "Project Manager")),
 ):
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    db.delete(project)
+
+    project.is_deleted = True
+    for project_module in project.project_modules:
+        project_module.is_deleted = True
+        for phase in project_module.phases:
+            phase.is_deleted = True
+            for task in phase.tasks:
+                task.is_deleted = True
+                for item in task.checklist_items:
+                    item.is_deleted = True
+
     db.commit()
     log_activity(db, current_user.id, "project", "delete", f"Deleted project #{project_id}")
 
@@ -96,10 +106,10 @@ def list_project_modules(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project.project_modules
+    return [pm for pm in project.project_modules if not pm.is_deleted]
 
 
 @router.post(
@@ -113,11 +123,11 @@ def add_project_module(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role(*MANAGER_ROLES)),
 ):
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    module = db.query(models.Module).filter(models.Module.id == payload.module_id).first()
+    module = db.query(models.Module).filter(models.Module.id == payload.module_id, models.Module.is_deleted == False).first()
     if not module:
         raise HTTPException(status_code=400, detail="Module not found")
 
@@ -126,6 +136,7 @@ def add_project_module(
         .filter(
             models.ProjectModule.project_id == project_id,
             models.ProjectModule.module_id == payload.module_id,
+            models.ProjectModule.is_deleted == False,
         )
         .first()
     )
@@ -164,6 +175,7 @@ def remove_project_module(
         .filter(
             models.ProjectModule.id == project_module_id,
             models.ProjectModule.project_id == project_id,
+            models.ProjectModule.is_deleted == False,
         )
         .first()
     )
@@ -171,7 +183,14 @@ def remove_project_module(
         raise HTTPException(status_code=404, detail="Project module not found")
 
     project = project_module.project
-    db.delete(project_module)
+    project_module.is_deleted = True
+    for phase in project_module.phases:
+        phase.is_deleted = True
+        for task in phase.tasks:
+            task.is_deleted = True
+            for item in task.checklist_items:
+                item.is_deleted = True
+
     db.commit()
     recompute_project_progress(db, project)
     db.commit()
@@ -187,7 +206,26 @@ def get_project_plan(
     current_user: models.User = Depends(get_current_active_user),
 ):
     """Full drill-down: every module with its phases, tasks and checklists."""
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.is_deleted == False).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project.project_modules
+
+    modules = []
+    for pm in project.project_modules:
+        if pm.is_deleted:
+            continue
+        phases = []
+        for phase in pm.phases:
+            if phase.is_deleted:
+                continue
+            tasks = []
+            for task in phase.tasks:
+                if task.is_deleted:
+                    continue
+                task.checklist_items = [ci for ci in task.checklist_items if not ci.is_deleted]
+                tasks.append(task)
+            phase.tasks = tasks
+            phases.append(phase)
+        pm.phases = phases
+        modules.append(pm)
+    return modules

@@ -15,7 +15,7 @@ def list_modules(
     current_user: models.User = Depends(get_current_active_user),
 ):
     """The master catalogue of implementable modules (SOP section 5, stage 3)."""
-    return db.query(models.Module).order_by(models.Module.name).all()
+    return db.query(models.Module).filter(models.Module.is_deleted == False).order_by(models.Module.name).all()
 
 
 @router.post("/", response_model=schemas.ModuleResponse, status_code=status.HTTP_201_CREATED)
@@ -24,7 +24,7 @@ def create_module(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role("Administrator")),
 ):
-    existing = db.query(models.Module).filter(models.Module.name == payload.name).first()
+    existing = db.query(models.Module).filter(models.Module.name == payload.name, models.Module.is_deleted == False).first()
     if existing:
         raise HTTPException(status_code=400, detail="Module already exists")
     module = models.Module(**payload.model_dump())

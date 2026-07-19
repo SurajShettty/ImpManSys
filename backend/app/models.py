@@ -37,6 +37,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -77,6 +78,7 @@ class Client(Base):
     csm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Customer Success Manager
     pm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Project Manager
     sales_owner = Column(String(100), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -99,6 +101,7 @@ class Project(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     progress = Column(Float, nullable=False, default=0.0)  # 0-100, derived from modules
+    is_deleted = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -117,6 +120,7 @@ class Module(Base):
     name = Column(String(100), unique=True, nullable=False, index=True)
     category = Column(String(50), nullable=True)
     description = Column(String(255), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
 
 class ProjectModule(Base):
@@ -129,6 +133,7 @@ class ProjectModule(Base):
     module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
     status = Column(String(30), nullable=False, default="Not Started")
     progress = Column(Float, nullable=False, default=0.0)  # 0-100, derived from tasks
+    is_deleted = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
     project = relationship("Project", back_populates="project_modules")
@@ -147,6 +152,7 @@ class Phase(Base):
     )
     name = Column(String(100), nullable=False)
     sequence = Column(Integer, nullable=False, default=0)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     project_module = relationship("ProjectModule", back_populates="phases")
     tasks = relationship(
@@ -174,6 +180,7 @@ class Task(Base):
     estimated_hours = Column(Float, nullable=True)
     actual_hours = Column(Float, nullable=True)
     progress = Column(Float, nullable=False, default=0.0)  # 0-100
+    is_deleted = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -198,6 +205,7 @@ class ChecklistItem(Base):
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
     item = Column(String(255), nullable=False)
     completed = Column(Boolean, nullable=False, default=False)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     task = relationship("Task", back_populates="checklist_items")
 

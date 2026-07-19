@@ -23,7 +23,7 @@ def get_current_user(
         raise credentials_exception
 
     user_id = int(payload.get("sub"))
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.is_deleted == False).first()
     if user is None or not user.is_active:
         raise credentials_exception
 

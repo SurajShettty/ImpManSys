@@ -19,7 +19,7 @@ EXECUTOR_ROLES = (
 
 
 def _load_task(db: Session, task_id: int) -> models.Task:
-    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    task = db.query(models.Task).filter(models.Task.id == task_id, models.Task.is_deleted == False).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -45,7 +45,7 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
 ):
-    phase = db.query(models.Phase).filter(models.Phase.id == payload.phase_id).first()
+    phase = db.query(models.Phase).filter(models.Phase.id == payload.phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=400, detail="Phase not found")
 
@@ -101,7 +101,9 @@ def delete_task(
 ):
     task = _load_task(db, task_id)
     project_module = task.phase.project_module
-    db.delete(task)
+    task.is_deleted = True
+    for item in task.checklist_items:
+        item.is_deleted = True
     db.commit()
     recompute_project_module_progress(db, project_module)
     db.commit()
@@ -140,7 +142,7 @@ def update_checklist_item(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
 ):
-    item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id).first()
+    item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id, models.ChecklistItem.is_deleted == False).first()
     if not item:
         raise HTTPException(status_code=404, detail="Checklist item not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -156,8 +158,8 @@ def delete_checklist_item(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role(*EXECUTOR_ROLES)),
 ):
-    item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id).first()
+    item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id, models.ChecklistItem.is_deleted == False).first()
     if not item:
         raise HTTPException(status_code=404, detail="Checklist item not found")
-    db.delete(item)
+    item.is_deleted = True
     db.commit()

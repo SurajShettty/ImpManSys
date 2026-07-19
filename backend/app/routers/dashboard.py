@@ -23,12 +23,12 @@ def dashboard_summary(
     else:
         next_month = today.replace(month=today.month + 1, day=1)
 
-    total_clients = db.query(models.Client).count()
-    total_projects = db.query(models.Project).count()
+    total_clients = db.query(models.Client).filter(models.Client.is_deleted == False).count()
+    total_projects = db.query(models.Project).filter(models.Project.is_deleted == False).count()
 
     active_projects = (
         db.query(models.Project)
-        .filter(models.Project.status.in_(ACTIVE_PROJECT_STATUSES))
+        .filter(models.Project.is_deleted == False, models.Project.status.in_(ACTIVE_PROJECT_STATUSES))
         .count()
     )
 
@@ -36,6 +36,7 @@ def dashboard_summary(
     delayed_projects = (
         db.query(models.Project)
         .filter(
+            models.Project.is_deleted == False,
             models.Project.status != "Completed",
             models.Project.status != "Cancelled",
             models.Project.end_date.isnot(None),
@@ -47,6 +48,7 @@ def dashboard_summary(
     go_live_this_month = (
         db.query(models.Client)
         .filter(
+            models.Client.is_deleted == False,
             models.Client.go_live_date.isnot(None),
             models.Client.go_live_date >= month_start,
             models.Client.go_live_date < next_month,

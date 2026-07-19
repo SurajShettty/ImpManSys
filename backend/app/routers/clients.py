@@ -13,7 +13,7 @@ MANAGER_ROLES = ("Administrator", "Customer Success Manager", "Project Manager")
 
 
 def _with_counts(client: models.Client) -> models.Client:
-    client.project_count = len(client.projects)
+    client.project_count = len([p for p in client.projects if not p.is_deleted])
     return client
 
 
@@ -22,7 +22,7 @@ def list_clients(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    clients = db.query(models.Client).order_by(models.Client.name).all()
+    clients = db.query(models.Client).filter(models.Client.is_deleted == False).order_by(models.Client.name).all()
     return [_with_counts(c) for c in clients]
 
 
@@ -46,7 +46,7 @@ def get_client(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    client = db.query(models.Client).filter(models.Client.id == client_id).first()
+    client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     return _with_counts(client)
@@ -77,10 +77,22 @@ def delete_client(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_role("Administrator")),
 ):
-    client = db.query(models.Client).filter(models.Client.id == client_id).first()
+    client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    db.delete(client)
+
+    client.is_deleted = True
+    for project in client.projects:
+        project.is_deleted = True
+        for project_module in project.project_modules:
+            project_module.is_deleted = True
+            for phase in project_module.phases:
+                phase.is_deleted = True
+                for task in phase.tasks:
+                    task.is_deleted = True
+                    for item in task.checklist_items:
+                        item.is_deleted = True
+
     db.commit()
     log_activity(db, current_user.id, "client", "delete", f"Deleted client #{client_id}")
 
@@ -91,12 +103,12 @@ def list_client_projects(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    client = db.query(models.Client).filter(models.Client.id == client_id).first()
+    client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     return (
         db.query(models.Project)
-        .filter(models.Project.client_id == client_id)
+        .filter(models.Project.client_id == client_id, models.Project.is_deleted == False)
         .order_by(models.Project.created_at.desc())
         .all()
     )
