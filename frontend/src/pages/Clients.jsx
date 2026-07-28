@@ -9,7 +9,17 @@ const BLANK = {
   crm_id: '',
   priority: 'Medium',
   go_live_date: '',
+  region: '',
+  implementation_state: '',
+  new_recurring: '',
+  kickoff_meeting_date: '',
+  billing_date: '',
+  rm_id: '',
+  total_users: '',
 }
+
+const REGIONS = ['North', 'South', 'East', 'West', 'Central']
+const NEW_RECURRING = ['New', 'Recurring']
 
 export default function Clients() {
   const [clients, setClients] = useState([])
@@ -31,6 +41,7 @@ export default function Clients() {
     try {
       // Drop empty optional fields so the API keeps them null.
       const payload = Object.fromEntries(Object.entries(form).filter(([, v]) => v !== ''))
+      if (payload.total_users) payload.total_users = Number(payload.total_users)
       await api.post('/clients/', payload)
       setForm(BLANK)
       setShowForm(false)
@@ -88,6 +99,36 @@ export default function Clients() {
                 <label>Expected Go-Live</label>
                 <input type="date" value={form.go_live_date} onChange={set('go_live_date')} />
               </div>
+              <div>
+                <label>Region</label>
+                <select value={form.region} onChange={set('region')}>
+                  <option value="">Select…</option>
+                  {REGIONS.map((r) => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Implementation State</label>
+                <input value={form.implementation_state} onChange={set('implementation_state')} placeholder="e.g. Go Live" />
+              </div>
+              <div>
+                <label>New / Recurring</label>
+                <select value={form.new_recurring} onChange={set('new_recurring')}>
+                  <option value="">Select…</option>
+                  {NEW_RECURRING.map((r) => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Kickoff Meeting Date</label>
+                <input type="date" value={form.kickoff_meeting_date} onChange={set('kickoff_meeting_date')} />
+              </div>
+              <div>
+                <label>Billing / Go-Live Date</label>
+                <input type="date" value={form.billing_date} onChange={set('billing_date')} />
+              </div>
+              <div>
+                <label>Total Users</label>
+                <input type="number" value={form.total_users} onChange={set('total_users')} />
+              </div>
             </div>
             <div style={{ marginTop: '0.75rem' }}>
               <button className="btn btn-primary" disabled={saving}>
@@ -103,10 +144,14 @@ export default function Clients() {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Type</th>
+              <th>Region</th>
               <th>Priority</th>
               <th>Status</th>
-              <th>Go-Live</th>
+              <th>Implementation State</th>
+              <th>New / Recurring</th>
+              <th>Kickoff</th>
+              <th>Billing / Go-Live</th>
+              <th>Total Users</th>
               <th>Projects</th>
             </tr>
           </thead>
@@ -114,15 +159,19 @@ export default function Clients() {
             {clients.map((c) => (
               <tr key={c.id}>
                 <td><Link to={`/clients/${c.id}`}>{c.name}</Link></td>
-                <td>{c.institution_type || '—'}</td>
+                <td>{c.region || '—'}</td>
                 <td><PriorityBadge value={c.priority} /></td>
                 <td><StatusBadge value={c.status} /></td>
-                <td>{c.go_live_date || '—'}</td>
+                <td>{c.implementation_state || '—'}</td>
+                <td>{c.new_recurring || '—'}</td>
+                <td>{c.kickoff_meeting_date || '—'}</td>
+                <td>{c.billing_date || '—'}</td>
+                <td>{c.total_users ?? '—'}</td>
                 <td>{c.project_count}</td>
               </tr>
             ))}
             {clients.length === 0 && (
-              <tr><td colSpan={6} className="muted" style={{ textAlign: 'center' }}>No clients yet.</td></tr>
+              <tr><td colSpan={10} className="muted" style={{ textAlign: 'center' }}>No clients yet.</td></tr>
             )}
           </tbody>
         </table>

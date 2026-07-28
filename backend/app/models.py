@@ -103,7 +103,21 @@ class Client(Base):
     go_live_date = Column(Date, nullable=True)
     csm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Customer Success Manager
     pm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Project Manager
+    rm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Relationship Manager
     sales_owner = Column(String(100), nullable=True)
+
+    # Client tracker fields mapped from the manual Excel tracker
+    instance_link = Column(String(500), nullable=True)
+    region = Column(String(50), nullable=True)
+    implementation_state = Column(String(50), nullable=True)  # e.g. Go Live
+    new_recurring = Column(String(20), nullable=True)  # New / Recurring
+    kickoff_meeting_date = Column(Date, nullable=True)
+    agreed_go_live_date = Column(Date, nullable=True)
+    billing_date = Column(Date, nullable=True)  # Login credentials sent date
+    tracker_link = Column(String(500), nullable=True)
+    master_data_status = Column(String(100), nullable=True)
+    total_users = Column(Integer, nullable=True)
+
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -111,6 +125,7 @@ class Client(Base):
 
     csm = relationship("User", foreign_keys=[csm_id])
     pm = relationship("User", foreign_keys=[pm_id])
+    rm = relationship("User", foreign_keys=[rm_id])
     projects = relationship(
         "Project", back_populates="client", cascade="all, delete-orphan"
     )
@@ -215,6 +230,20 @@ class Task(Base):
     actual_hours = Column(Float, nullable=True)
     progress = Column(Float, nullable=False, default=0.0)  # 0-100
     sequence = Column(Integer, nullable=False, default=0)
+
+    # Fields mapped from the manual Excel project plan
+    client_spoc = Column(String(150), nullable=True)
+    client_spoc_email = Column(String(255), nullable=True)
+    client_spoc_phone = Column(String(50), nullable=True)
+    uat_proposed = Column(Boolean, default=False, nullable=False)
+    delay_reason = Column(Text, nullable=True)
+    client_response = Column(Text, nullable=True)
+    internal_response = Column(Text, nullable=True)
+    external_link = Column(String(500), nullable=True)
+    category = Column(String(50), nullable=False, default="Regular")
+    proposed_timeline = Column(Date, nullable=True)
+    module_status = Column(String(100), nullable=True)
+
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)

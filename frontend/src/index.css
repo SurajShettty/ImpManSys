@@ -1067,6 +1067,10 @@ body.dark .status-select {
   border: 1px solid var(--border);
 }
 
+.modal.modal-wide {
+  max-width: 900px;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;

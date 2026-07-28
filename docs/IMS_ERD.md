@@ -17,6 +17,7 @@ erDiagram
     USERS ||--o{ MEETINGS : creates
     USERS ||--o{ CLIENTS : managed_as_csm
     USERS ||--o{ CLIENTS : managed_as_pm
+    USERS ||--o{ CLIENTS : managed_as_rm
     CLIENTS ||--o{ PROJECTS : has
     PROJECTS ||--o{ PROJECT_MODULES : contains
     PROJECTS ||--o{ MEETINGS : records
@@ -90,7 +91,18 @@ erDiagram
 | go_live_date | date | |
 | csm_id | integer FK → users | Customer Success Manager |
 | pm_id | integer FK → users | Project Manager |
+| rm_id | integer FK → users | Relationship Manager |
 | sales_owner | varchar(100) | |
+| instance_link | varchar(500) | Link to client's live instance |
+| region | varchar(50) | North / South / East / West / Central |
+| implementation_state | varchar(50) | e.g. Go Live, In Progress |
+| new_recurring | varchar(20) | New / Recurring |
+| kickoff_meeting_date | date | Date of project kickoff |
+| agreed_go_live_date | date | Contractually agreed go-live |
+| billing_date | date | Login credentials sent / billing start |
+| tracker_link | varchar(500) | External tracker (Google Sheets, etc.) |
+| master_data_status | varchar(100) | Status of master data setup |
+| total_users | integer | Total client users |
 | is_deleted | boolean | Soft-delete flag |
 | deleted_at | timestamp | |
 | created_at | timestamp | |
@@ -233,6 +245,7 @@ erDiagram
 | permissions | role_permissions | M:N via `role_permissions` | |
 | users | clients | 1:N (csm_id) | CSM assignment |
 | users | clients | 1:N (pm_id) | PM assignment |
+| users | clients | 1:N (rm_id) | Relationship Manager assignment |
 | clients | projects | 1:N | |
 | projects | project_modules | 1:N | Modules selected for a project |
 | modules | project_modules | 1:N | Master catalogue reused across projects |

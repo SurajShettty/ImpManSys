@@ -41,6 +41,33 @@ const EMPTY_MEETING = {
   next_follow_up: '',
 }
 
+const TASK_CATEGORIES = ['Regular', 'Custom Development', 'Enhancement']
+
+const EMPTY_TASK_DETAIL = {
+  title: '',
+  description: '',
+  priority: 'Medium',
+  status: 'Not Started',
+  start_date: '',
+  due_date: '',
+  estimated_hours: '',
+  actual_hours: '',
+  progress: 0,
+  owner_id: '',
+  reviewer_id: '',
+  client_spoc: '',
+  client_spoc_email: '',
+  client_spoc_phone: '',
+  uat_proposed: false,
+  delay_reason: '',
+  client_response: '',
+  internal_response: '',
+  external_link: '',
+  category: 'Regular',
+  proposed_timeline: '',
+  module_status: '',
+}
+
 function toForm(project) {
   const f = {}
   for (const key of EDITABLE_FIELDS) {
@@ -69,6 +96,10 @@ export default function ProjectDetail() {
   const [meetingForm, setMeetingForm] = useState(EMPTY_MEETING)
   const [savingMeeting, setSavingMeeting] = useState(false)
   const [expandedMeetings, setExpandedMeetings] = useState({})
+  const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)
+  const [taskForm, setTaskForm] = useState(EMPTY_TASK_DETAIL)
+  const [savingTask, setSavingTask] = useState(false)
 
   const loadPlan = () =>
     Promise.all([api.get(`/projects/${id}`), api.get(`/projects/${id}/plan`), api.get(`/projects/${id}/meetings`)]).then(
@@ -348,6 +379,63 @@ export default function ProjectDetail() {
     }
   }
 
+  const taskToForm = (task) => {
+    const f = {}
+    for (const key of Object.keys(EMPTY_TASK_DETAIL)) {
+      const value = task[key]
+      if (value === null || value === undefined) {
+        f[key] = key === 'uat_proposed' ? false : ''
+      } else {
+        f[key] = value
+      }
+    }
+    return f
+  }
+
+  const openTaskModal = (task) => {
+    setEditingTask(task)
+    setTaskForm(taskToForm(task))
+    setTaskModalOpen(true)
+    setError('')
+  }
+
+  const closeTaskModal = () => {
+    setTaskModalOpen(false)
+    setEditingTask(null)
+    setTaskForm(EMPTY_TASK_DETAIL)
+  }
+
+  const submitTask = async (e) => {
+    e.preventDefault()
+    setSavingTask(true)
+    setError('')
+    try {
+      const payload = {}
+      for (const key of Object.keys(EMPTY_TASK_DETAIL)) {
+        const value = taskForm[key]
+        if (value === '' || value === null || value === undefined) {
+          payload[key] = null
+        } else {
+          payload[key] = value
+        }
+      }
+      // Convert numeric fields
+      payload.estimated_hours = payload.estimated_hours ? Number(payload.estimated_hours) : null
+      payload.actual_hours = payload.actual_hours ? Number(payload.actual_hours) : null
+      payload.progress = payload.progress ? Number(payload.progress) : 0
+      payload.owner_id = payload.owner_id ? Number(payload.owner_id) : null
+      payload.reviewer_id = payload.reviewer_id ? Number(payload.reviewer_id) : null
+
+      await api.put(`/tasks/${editingTask.id}`, payload)
+      closeTaskModal()
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update task')
+    } finally {
+      setSavingTask(false)
+    }
+  }
+
   if (!project) return <div className="muted">{error || 'Loading…'}</div>
 
   return (
@@ -606,7 +694,28 @@ export default function ProjectDetail() {
                           onDrop={(e) => onDrop(e, phase.id, task.id)}
                         >
                           <td className="drag-handle" title="Drag to reorder">⠿</td>
-                          <td>{task.title}</td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {task.title}
+                              {task.category && task.category !== 'Regular' && (
+                                <span className={`badge badge-${task.category === 'Enhancement' ? 'amber' : 'blue'}`}>
+                                  {task.category}
+                                </span>
+                              )}
+                              {task.external_link && (
+                                <a
+                                  href={task.external_link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="badge badge-grey"
+                                  title="Open external link"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  ↗
+                                </a>
+                              )}
+                            </div>
+                          </td>
                           <td>
                             <select
                               value={task.priority}
@@ -680,12 +789,20 @@ export default function ProjectDetail() {
                             </div>
                           </td>
                           <td>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => deleteTask(task.id, task.title)}
-                            >
-                              Delete
-                            </button>
+                            <div className="actions">
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => openTaskModal(task)}
+                              >
+                                Edit Details
+                              </button>
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => deleteTask(task.id, task.title)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         )
@@ -776,6 +893,205 @@ export default function ProjectDetail() {
                 <button type="button" className="btn btn-light" onClick={closeMeetingModal}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={savingMeeting}>
                   {savingMeeting ? 'Saving…' : (editingMeeting ? 'Update Meeting' : 'Add Meeting')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {taskModalOpen && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeTaskModal() }}>
+          <div className="modal modal-wide">
+            <div className="modal-header">
+              <h3>Edit Task Details</h3>
+              <button className="modal-close" onClick={closeTaskModal}>×</button>
+            </div>
+            <form onSubmit={submitTask}>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div>
+                    <label>Title *</label>
+                    <input
+                      value={taskForm.title}
+                      onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label>Category</label>
+                    <select
+                      value={taskForm.category}
+                      onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}
+                    >
+                      {TASK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label>Status</label>
+                    <select
+                      value={taskForm.status}
+                      onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })}
+                    >
+                      {TASK_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label>Priority</label>
+                    <select
+                      value={taskForm.priority}
+                      onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                    >
+                      {TASK_PRIORITIES.map((p) => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ marginTop: '0.75rem' }}>
+                  <div>
+                    <label>Start Date</label>
+                    <input
+                      type="date"
+                      value={taskForm.start_date}
+                      onChange={(e) => setTaskForm({ ...taskForm, start_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Due Date</label>
+                    <input
+                      type="date"
+                      value={taskForm.due_date}
+                      onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Proposed Timeline</label>
+                    <input
+                      type="date"
+                      value={taskForm.proposed_timeline}
+                      onChange={(e) => setTaskForm({ ...taskForm, proposed_timeline: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Progress (%)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={taskForm.progress}
+                      onChange={(e) => setTaskForm({ ...taskForm, progress: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Estimated Hours</label>
+                    <input
+                      type="number"
+                      value={taskForm.estimated_hours}
+                      onChange={(e) => setTaskForm({ ...taskForm, estimated_hours: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Actual Hours</label>
+                    <input
+                      type="number"
+                      value={taskForm.actual_hours}
+                      onChange={(e) => setTaskForm({ ...taskForm, actual_hours: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ marginTop: '0.75rem' }}>
+                  <div>
+                    <label>Client SPOC</label>
+                    <input
+                      value={taskForm.client_spoc}
+                      onChange={(e) => setTaskForm({ ...taskForm, client_spoc: e.target.value })}
+                      placeholder="Name"
+                    />
+                  </div>
+                  <div>
+                    <label>Client SPOC Email</label>
+                    <input
+                      type="email"
+                      value={taskForm.client_spoc_email}
+                      onChange={(e) => setTaskForm({ ...taskForm, client_spoc_email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Client SPOC Phone</label>
+                    <input
+                      value={taskForm.client_spoc_phone}
+                      onChange={(e) => setTaskForm({ ...taskForm, client_spoc_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label>Module Status</label>
+                    <input
+                      value={taskForm.module_status}
+                      onChange={(e) => setTaskForm({ ...taskForm, module_status: e.target.value })}
+                      placeholder="e.g. Finance V2 Status"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ marginTop: '0.75rem' }}>
+                  <div>
+                    <label>External Link (ClickUp/Jira)</label>
+                    <input
+                      value={taskForm.external_link}
+                      onChange={(e) => setTaskForm({ ...taskForm, external_link: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="checkbox-field">
+                    <input
+                      id="uat_proposed"
+                      type="checkbox"
+                      checked={taskForm.uat_proposed}
+                      onChange={(e) => setTaskForm({ ...taskForm, uat_proposed: e.target.checked })}
+                    />
+                    <label htmlFor="uat_proposed">UAT Proposed by Partner</label>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                  <label>Description</label>
+                  <textarea
+                    rows={2}
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Reason for Delay</label>
+                  <textarea
+                    rows={2}
+                    value={taskForm.delay_reason}
+                    onChange={(e) => setTaskForm({ ...taskForm, delay_reason: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Response from Partner</label>
+                  <textarea
+                    rows={2}
+                    value={taskForm.client_response}
+                    onChange={(e) => setTaskForm({ ...taskForm, client_response: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Response from Digii / Internal</label>
+                  <textarea
+                    rows={2}
+                    value={taskForm.internal_response}
+                    onChange={(e) => setTaskForm({ ...taskForm, internal_response: e.target.value })}
+                  />
+                </div>
+
+                {error && <div className="error" style={{ marginBottom: 0 }}>{error}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={closeTaskModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={savingTask}>
+                  {savingTask ? 'Saving…' : 'Save Task Details'}
                 </button>
               </div>
             </form>

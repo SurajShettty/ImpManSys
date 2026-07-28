@@ -139,7 +139,20 @@ class ClientBase(BaseModel):
     go_live_date: date | None = None
     csm_id: int | None = None
     pm_id: int | None = None
+    rm_id: int | None = None
     sales_owner: str | None = None
+
+    # Client tracker fields
+    instance_link: str | None = None
+    region: str | None = None
+    implementation_state: str | None = None
+    new_recurring: str | None = None
+    kickoff_meeting_date: date | None = None
+    agreed_go_live_date: date | None = None
+    billing_date: date | None = None
+    tracker_link: str | None = None
+    master_data_status: str | None = None
+    total_users: int | None = None
 
 
 class ClientCreate(ClientBase):
@@ -157,7 +170,20 @@ class ClientUpdate(BaseModel):
     go_live_date: date | None = None
     csm_id: int | None = None
     pm_id: int | None = None
+    rm_id: int | None = None
     sales_owner: str | None = None
+
+    # Client tracker fields
+    instance_link: str | None = None
+    region: str | None = None
+    implementation_state: str | None = None
+    new_recurring: str | None = None
+    kickoff_meeting_date: date | None = None
+    agreed_go_live_date: date | None = None
+    billing_date: date | None = None
+    tracker_link: str | None = None
+    master_data_status: str | None = None
+    total_users: int | None = None
 
 
 class ClientResponse(ClientBase):
@@ -167,6 +193,7 @@ class ClientResponse(ClientBase):
     updated_at: datetime
     csm: UserBrief | None = None
     pm: UserBrief | None = None
+    rm: UserBrief | None = None
     project_count: int = 0
 
 
@@ -251,6 +278,17 @@ class TaskBase(BaseModel):
     actual_hours: float | None = None
     owner_id: int | None = None
     reviewer_id: int | None = None
+    client_spoc: str | None = None
+    client_spoc_email: str | None = None
+    client_spoc_phone: str | None = None
+    uat_proposed: bool = False
+    delay_reason: str | None = None
+    client_response: str | None = None
+    internal_response: str | None = None
+    external_link: str | None = None
+    category: str = "Regular"
+    proposed_timeline: date | None = None
+    module_status: str | None = None
 
 
 class TaskCreate(TaskBase):
@@ -270,6 +308,17 @@ class TaskUpdate(BaseModel):
     owner_id: int | None = None
     reviewer_id: int | None = None
     progress: float | None = None
+    client_spoc: str | None = None
+    client_spoc_email: str | None = None
+    client_spoc_phone: str | None = None
+    uat_proposed: bool | None = None
+    delay_reason: str | None = None
+    client_response: str | None = None
+    internal_response: str | None = None
+    external_link: str | None = None
+    category: str | None = None
+    proposed_timeline: date | None = None
+    module_status: str | None = None
 
 
 class TaskResponse(TaskBase):

@@ -16,6 +16,8 @@ const PROJECT_TYPES = [
 const INSTITUTION_TYPES = ['University', 'College', 'School']
 const PRIORITIES = ['Critical', 'High', 'Medium', 'Low']
 const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
+const REGIONS = ['North', 'South', 'East', 'West', 'Central']
+const NEW_RECURRING = ['New', 'Recurring']
 
 // Fields the edit form manages, so we can build the payload generically.
 const EDITABLE_FIELDS = [
@@ -29,7 +31,18 @@ const EDITABLE_FIELDS = [
   'go_live_date',
   'csm_id',
   'pm_id',
+  'rm_id',
   'sales_owner',
+  'instance_link',
+  'region',
+  'implementation_state',
+  'new_recurring',
+  'kickoff_meeting_date',
+  'agreed_go_live_date',
+  'billing_date',
+  'tracker_link',
+  'master_data_status',
+  'total_users',
 ]
 
 // Turn a client record into flat form values (null -> '' so inputs stay controlled).
@@ -110,7 +123,9 @@ export default function ClientDetail() {
       const payload = {}
       for (const key of EDITABLE_FIELDS) {
         const value = editForm[key]
-        if (key === 'csm_id' || key === 'pm_id') {
+        if (key === 'csm_id' || key === 'pm_id' || key === 'rm_id') {
+          payload[key] = value === '' ? null : Number(value)
+        } else if (key === 'total_users') {
           payload[key] = value === '' ? null : Number(value)
         } else {
           payload[key] = value === '' ? null : value
@@ -152,11 +167,28 @@ export default function ClientDetail() {
             <div><p className="stat-label">CRM ID</p><p>{client.crm_id || '—'}</p></div>
             <div><p className="stat-label">Priority</p><p>{client.priority}</p></div>
             <div><p className="stat-label">Status</p><p>{client.status}</p></div>
+            <div><p className="stat-label">Region</p><p>{client.region || '—'}</p></div>
+            <div><p className="stat-label">Implementation State</p><p>{client.implementation_state || '—'}</p></div>
+            <div><p className="stat-label">New / Recurring</p><p>{client.new_recurring || '—'}</p></div>
             <div><p className="stat-label">Contract</p><p>{client.contract_start || '—'} → {client.contract_end || '—'}</p></div>
             <div><p className="stat-label">Expected Go-Live</p><p>{client.go_live_date || '—'}</p></div>
+            <div><p className="stat-label">Agreed Go-Live</p><p>{client.agreed_go_live_date || '—'}</p></div>
+            <div><p className="stat-label">Kickoff Meeting</p><p>{client.kickoff_meeting_date || '—'}</p></div>
+            <div><p className="stat-label">Billing / Live Date</p><p>{client.billing_date || '—'}</p></div>
             <div><p className="stat-label">CSM</p><p>{client.csm?.name || '—'}</p></div>
             <div><p className="stat-label">Project Manager</p><p>{client.pm?.name || '—'}</p></div>
+            <div><p className="stat-label">Relationship Manager</p><p>{client.rm?.name || '—'}</p></div>
             <div><p className="stat-label">Sales Owner</p><p>{client.sales_owner || '—'}</p></div>
+            <div><p className="stat-label">Total Users</p><p>{client.total_users ?? '—'}</p></div>
+            <div><p className="stat-label">Master Data Status</p><p>{client.master_data_status || '—'}</p></div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <p className="stat-label">Instance Link</p>
+              {client.instance_link ? <a href={client.instance_link} target="_blank" rel="noreferrer">{client.instance_link}</a> : <p>—</p>}
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <p className="stat-label">Tracker Link</p>
+              {client.tracker_link ? <a href={client.tracker_link} target="_blank" rel="noreferrer">{client.tracker_link}</a> : <p>—</p>}
+            </div>
           </div>
         </div>
       ) : (
@@ -220,6 +252,59 @@ export default function ClientDetail() {
               <div>
                 <label>Expected Go-Live</label>
                 <input type="date" value={editForm.go_live_date} onChange={setEdit('go_live_date')} />
+              </div>
+              <div>
+                <label>Agreed Go-Live</label>
+                <input type="date" value={editForm.agreed_go_live_date} onChange={setEdit('agreed_go_live_date')} />
+              </div>
+              <div>
+                <label>Kickoff Meeting Date</label>
+                <input type="date" value={editForm.kickoff_meeting_date} onChange={setEdit('kickoff_meeting_date')} />
+              </div>
+              <div>
+                <label>Billing / Go-Live Date</label>
+                <input type="date" value={editForm.billing_date} onChange={setEdit('billing_date')} />
+              </div>
+              <div>
+                <label>Region</label>
+                <select value={editForm.region} onChange={setEdit('region')}>
+                  <option value="">Select…</option>
+                  {REGIONS.map((r) => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Implementation State</label>
+                <input value={editForm.implementation_state} onChange={setEdit('implementation_state')} placeholder="e.g. Go Live" />
+              </div>
+              <div>
+                <label>New / Recurring</label>
+                <select value={editForm.new_recurring} onChange={setEdit('new_recurring')}>
+                  <option value="">Select…</option>
+                  {NEW_RECURRING.map((r) => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Relationship Manager</label>
+                <select value={editForm.rm_id} onChange={setEdit('rm_id')}>
+                  <option value="">Unassigned</option>
+                  {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>Total Users</label>
+                <input type="number" value={editForm.total_users} onChange={setEdit('total_users')} />
+              </div>
+              <div>
+                <label>Master Data Status</label>
+                <input value={editForm.master_data_status} onChange={setEdit('master_data_status')} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label>Instance Link</label>
+                <input value={editForm.instance_link} onChange={setEdit('instance_link')} placeholder="https://client.digiicampus.com/home" />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label>Tracker Link</label>
+                <input value={editForm.tracker_link} onChange={setEdit('tracker_link')} placeholder="https://docs.google.com/spreadsheets/..." />
               </div>
             </div>
             <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
