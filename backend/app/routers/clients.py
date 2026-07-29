@@ -136,9 +136,10 @@ def list_client_phases(
     client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    return (
+    phases = (
         db.query(models.Phase)
         .filter(models.Phase.client_id == client_id, models.Phase.is_deleted == False)
         .order_by(models.Phase.created_at.desc())
         .all()
     )
+    return phases

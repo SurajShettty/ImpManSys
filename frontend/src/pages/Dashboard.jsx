@@ -11,6 +11,10 @@ const CARDS = [
   { key: 'total_phases', label: 'Total Phases', note: 'All implementation phases', tone: 'grey' },
 ]
 
+const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
+const PHASE_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
+const REGIONS = ['North', 'South', 'East', 'West', 'Central']
+
 function pct(value, total) {
   if (!total) return 0
   return Math.round((value / total) * 100)
@@ -19,14 +23,29 @@ function pct(value, total) {
 export default function Dashboard() {
   const { user } = useAuth()
   const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [users, setUsers] = useState([])
+  const [filters, setFilters] = useState({ client_status: '', region: '', phase_status: '', owner_id: '' })
 
   useEffect(() => {
+    const params = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== ''))
+    setLoading(true)
+    setError('')
     api
-      .get('/dashboard/summary')
+      .get('/dashboard/summary', { params })
       .then((res) => setSummary(res.data))
       .catch(() => setError('Failed to load dashboard'))
+      .finally(() => setLoading(false))
+  }, [filters])
+
+  useEffect(() => {
+    api.get('/users/').then((res) => setUsers(res.data)).catch(() => setUsers([]))
   }, [])
+
+  const setFilter = (key) => (e) => setFilters({ ...filters, [key]: e.target.value })
+  const clearFilters = () => setFilters({ client_status: '', region: '', phase_status: '', owner_id: '' })
+  const hasFilters = Object.values(filters).some(Boolean)
 
   const activePhases = summary?.active_phases || 0
   const delayedPhases = summary?.delayed_phases || 0
@@ -51,14 +70,63 @@ export default function Dashboard() {
 
       {error && <div className="error">{error}</div>}
 
-      <div className="dashboard-stat-grid">
-        {CARDS.map((c) => (
-          <div className={`dashboard-stat-card dashboard-stat-${c.tone}`} key={c.key}>
-            <p className="stat-label">{c.label}</p>
-            <p className="stat-value">{summary ? summary[c.key] : '-'}</p>
-            <p className="muted">{c.note}</p>
+      <div className="card" style={{ marginTop: '-0.25rem' }}>
+        <div className="form-row" style={{ marginBottom: 0 }}>
+          <div>
+            <label>Client Status</label>
+            <select value={filters.client_status} onChange={setFilter('client_status')}>
+              <option value="">All statuses</option>
+              {CLIENT_STATUSES.map((status) => <option key={status}>{status}</option>)}
+            </select>
           </div>
-        ))}
+          <div>
+            <label>Region</label>
+            <select value={filters.region} onChange={setFilter('region')}>
+              <option value="">All regions</option>
+              {REGIONS.map((region) => <option key={region}>{region}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Phase Status</label>
+            <select value={filters.phase_status} onChange={setFilter('phase_status')}>
+              <option value="">All phase statuses</option>
+              {PHASE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </div>
+          {users.length > 0 && (
+            <div>
+              <label>Owner</label>
+              <select value={filters.owner_id} onChange={setFilter('owner_id')}>
+                <option value="">All CSMs / PMs</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <label>&nbsp;</label>
+            <button type="button" className="btn btn-light" onClick={clearFilters} disabled={!hasFilters} style={{ width: '100%' }}>
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="dashboard-stat-grid">
+        {loading && !summary
+          ? CARDS.map((c) => (
+            <div className="dashboard-stat-card" key={c.key}>
+              <div className="skeleton skeleton-label" />
+              <div className="skeleton skeleton-value" />
+              <div className="skeleton skeleton-line" />
+            </div>
+          ))
+          : CARDS.map((c) => (
+            <div className={`dashboard-stat-card dashboard-stat-${c.tone}`} key={c.key}>
+              <p className="stat-label">{c.label}</p>
+              <p className="stat-value">{summary ? summary[c.key] : '-'}</p>
+              <p className="muted">{c.note}</p>
+            </div>
+          ))}
       </div>
 
       <div className="dashboard-grid">

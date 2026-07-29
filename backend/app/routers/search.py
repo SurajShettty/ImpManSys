@@ -39,7 +39,12 @@ def global_search(
         .filter(
             models.Phase.is_deleted == False,
             models.Client.is_deleted == False,
-            models.Phase.name.ilike(term),
+            or_(
+                models.Phase.name.ilike(term),
+                models.Phase.type.ilike(term),
+                models.Phase.status.ilike(term),
+                models.Client.name.ilike(term),
+            ),
         )
         .limit(10)
         .all()
@@ -48,6 +53,7 @@ def global_search(
     activities = (
         db.query(models.Activity)
         .join(models.PhaseModule)
+        .join(models.Module)
         .join(models.Phase)
         .join(models.Client)
         .filter(
@@ -58,6 +64,11 @@ def global_search(
             or_(
                 models.Activity.title.ilike(term),
                 models.Activity.description.ilike(term),
+                models.Activity.status.ilike(term),
+                models.Activity.priority.ilike(term),
+                models.Module.name.ilike(term),
+                models.Phase.name.ilike(term),
+                models.Client.name.ilike(term),
             ),
         )
         .limit(10)
@@ -96,7 +107,9 @@ def global_search(
                 "client_id": p.client_id,
                 "client_name": p.client.name if p.client else None,
                 "status": p.status,
+                "type": p.type,
                 "progress": p.progress,
+                "end_date": p.end_date,
             }
             for p in phases
         ],
@@ -108,6 +121,10 @@ def global_search(
                 "priority": a.priority,
                 "phase_id": a.phase_module.phase_id,
                 "phase_name": a.phase_module.phase.name,
+                "client_name": a.phase_module.phase.client.name if a.phase_module.phase.client else None,
+                "module_name": a.phase_module.module.name if a.phase_module.module else None,
+                "due_date": a.due_date,
+                "owner": a.owner.name if a.owner else None,
             }
             for a in activities
         ],

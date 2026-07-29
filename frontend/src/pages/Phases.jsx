@@ -61,17 +61,6 @@ export default function Phases() {
   const clearFilters = () =>
     setFilters({ client_id: '', status: '', type: '', from: '', to: '' })
 
-  const deletePhase = async (phase) => {
-    if (!window.confirm(`Delete phase "${phase.name}"? This cannot be undone.`)) return
-    setError('')
-    try {
-      await api.delete(`/phases/${phase.id}`)
-      load()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete phase')
-    }
-  }
-
   return (
     <div>
       <div className="page-header">
@@ -128,7 +117,7 @@ export default function Phases() {
       {error && <div className="error">{error}</div>}
       <p className="muted">{filtered.length} of {phases.length} phases</p>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
         <table className="table">
           <thead>
             <tr>
@@ -138,27 +127,41 @@ export default function Phases() {
               <th>Status</th>
               <th>Progress</th>
               <th>End Date</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th>Modules</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => (
-              <tr key={p.id}>
-                <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
-                <td>{clientMap[p.client_id] || '—'}</td>
-                <td>{p.type}</td>
-                <td><StatusBadge value={p.status} /></td>
-                <td><ProgressBar value={p.progress} /></td>
-                <td>{p.end_date || '—'}</td>
-                <td>
-                  <div className="actions" style={{ justifyContent: 'flex-end' }}>
-                    <button className="btn btn-danger btn-sm" onClick={() => deletePhase(p)}>
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((p) => {
+              const modules = (p.module_names || p.modules || [])
+                .map((module) => (typeof module === 'string' ? module : module?.name))
+                .filter(Boolean)
+              const visibleModules = modules.slice(0, 3)
+              const hiddenCount = modules.length - visibleModules.length
+              return (
+                <tr key={p.id}>
+                  <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
+                  <td>{clientMap[p.client_id] || '—'}</td>
+                  <td>{p.type}</td>
+                  <td><StatusBadge value={p.status} /></td>
+                  <td><ProgressBar value={p.progress} /></td>
+                  <td>{p.end_date || '—'}</td>
+                  <td>
+                    <div className="module-badges">
+                      {visibleModules.map((name) => (
+                        <span className="badge badge-grey module-badge" key={name}>{name}</span>
+                      ))}
+                      {hiddenCount > 0 && (
+                        <span className="badge badge-blue module-more" title={modules.join(', ')}>
+                          +{hiddenCount}
+                          <span className="module-tooltip">{modules.join(', ')}</span>
+                        </span>
+                      )}
+                      {modules.length === 0 && <span className="muted">—</span>}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
             {filtered.length === 0 && (
               <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>No phases match these filters.</td></tr>
             )}

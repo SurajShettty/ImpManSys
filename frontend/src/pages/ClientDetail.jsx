@@ -31,7 +31,6 @@ const EDITABLE_FIELDS = [
   'contract_end',
   'go_live_date',
   'csm_id',
-  'pm_id',
   'rm_id',
   'sales_owner',
   'instance_link',
@@ -87,7 +86,7 @@ export default function ClientDetail() {
         setMeetings(m.data)
       })
       .catch(() => setError('Failed to load client'))
-    // Users power the CSM / PM dropdowns. Non-fatal if the role can't list users.
+    // Users power the CSM / RM dropdowns. Non-fatal if the role can't list users.
     api.get('/users/').then((res) => setUsers(res.data)).catch(() => setUsers([]))
   }
 
@@ -125,7 +124,7 @@ export default function ClientDetail() {
       const payload = {}
       for (const key of EDITABLE_FIELDS) {
         const value = editForm[key]
-        if (key === 'csm_id' || key === 'pm_id' || key === 'rm_id') {
+        if (key === 'csm_id' || key === 'rm_id') {
           payload[key] = value === '' ? null : Number(value)
         } else if (key === 'total_users') {
           payload[key] = value === '' ? null : Number(value)
@@ -183,7 +182,6 @@ export default function ClientDetail() {
             <div><p className="stat-label">Contract</p><p>{client.contract_start || '—'} → {client.contract_end || '—'}</p></div>
             <div><p className="stat-label">Expected Go-Live</p><p>{client.go_live_date || '—'}</p></div>
             <div><p className="stat-label">CSM</p><p>{client.csm?.name || '—'}</p></div>
-            <div><p className="stat-label">Project Manager</p><p>{client.pm?.name || '—'}</p></div>
             <div><p className="stat-label">Sales Owner</p><p>{client.sales_owner || '—'}</p></div>
           </div>
           {clientDetailsExpanded && (
@@ -245,13 +243,6 @@ export default function ClientDetail() {
               <div>
                 <label>Customer Success Manager</label>
                 <select value={editForm.csm_id} onChange={setEdit('csm_id')}>
-                  <option value="">Unassigned</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label>Project Manager</label>
-                <select value={editForm.pm_id} onChange={setEdit('pm_id')}>
                   <option value="">Unassigned</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
@@ -339,7 +330,7 @@ export default function ClientDetail() {
             </div>
             {users.length === 0 && (
               <p className="muted" style={{ marginBottom: 0 }}>
-                No users available for CSM/PM (your role may not permit listing users).
+                No users available for CSM/RM (your role may not permit listing users).
               </p>
             )}
           </form>
@@ -381,22 +372,43 @@ export default function ClientDetail() {
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
         <table className="table">
           <thead>
-            <tr><th>Name</th><th>Type</th><th>Status</th><th>Progress</th></tr>
+            <tr><th>Name</th><th>Type</th><th>Status</th><th>Progress</th><th>Modules</th></tr>
           </thead>
           <tbody>
-            {phases.map((p) => (
-              <tr key={p.id}>
-                <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
-                <td>{p.type}</td>
-                <td><StatusBadge value={p.status} /></td>
-                <td><ProgressBar value={p.progress} /></td>
-              </tr>
-            ))}
+            {phases.map((p) => {
+              const modules = (p.module_names || p.modules || [])
+                .map((module) => (typeof module === 'string' ? module : module?.name))
+                .filter(Boolean)
+              const visibleModules = modules.slice(0, 3)
+              const hiddenCount = modules.length - visibleModules.length
+              return (
+                <tr key={p.id}>
+                  <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
+                  <td>{p.type}</td>
+                  <td><StatusBadge value={p.status} /></td>
+                  <td><ProgressBar value={p.progress} /></td>
+                  <td>
+                    <div className="module-badges">
+                      {visibleModules.map((name) => (
+                        <span className="badge badge-grey module-badge" key={name}>{name}</span>
+                      ))}
+                      {hiddenCount > 0 && (
+                        <span className="badge badge-blue module-more" title={modules.join(', ')}>
+                          +{hiddenCount}
+                          <span className="module-tooltip">{modules.join(', ')}</span>
+                        </span>
+                      )}
+                      {modules.length === 0 && <span className="muted">—</span>}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
             {phases.length === 0 && (
-              <tr><td colSpan={4} className="muted" style={{ textAlign: 'center' }}>No phases yet.</td></tr>
+              <tr><td colSpan={5} className="muted" style={{ textAlign: 'center' }}>No phases yet.</td></tr>
             )}
           </tbody>
         </table>

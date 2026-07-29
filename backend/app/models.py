@@ -158,6 +158,14 @@ class Phase(Base):
         "Meeting", back_populates="phase", cascade="all, delete-orphan"
     )
 
+    @property
+    def module_names(self) -> list[str]:
+        return [
+            pm.module.name
+            for pm in self.phase_modules
+            if not pm.is_deleted and pm.module and not pm.module.is_deleted
+        ]
+
 
 class Module(Base):
     """Master catalogue of implementable modules (Admissions, Attendance, ...)."""

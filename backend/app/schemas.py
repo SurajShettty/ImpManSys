@@ -225,6 +225,7 @@ class PhaseResponse(PhaseBase):
     id: int
     client_id: int
     progress: float
+    module_names: list[str] = []
     created_at: datetime
     updated_at: datetime
 

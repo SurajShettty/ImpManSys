@@ -257,3 +257,31 @@ def recompute_phase_progress(db: Session, phase: models.Phase) -> None:
             phase.status = "In Progress"
         else:
             phase.status = "Not Started"
+
+    recompute_client_implementation_state(db, phase.client)
+
+
+def recompute_client_implementation_state(
+    db: Session, client: models.Client | None
+) -> None:
+    """Set client implementation state to Go Live when all work is complete."""
+    if not client or client.is_deleted:
+        return
+
+    phases = [p for p in client.phases if not p.is_deleted]
+    if not phases:
+        return
+
+    activities = [
+        activity
+        for phase in phases
+        for phase_module in phase.phase_modules
+        if not phase_module.is_deleted
+        for activity in phase_module.activities
+        if not activity.is_deleted and activity.status != "Cancelled"
+    ]
+    if not activities:
+        return
+
+    if all(activity.status == COMPLETED_STATUS for activity in activities):
+        client.implementation_state = "Go Live"

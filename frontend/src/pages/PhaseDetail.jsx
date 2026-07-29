@@ -100,6 +100,7 @@ export default function PhaseDetail() {
   const [editingActivity, setEditingActivity] = useState(null)
   const [activityForm, setActivityForm] = useState(EMPTY_ACTIVITY_DETAIL)
   const [savingActivity, setSavingActivity] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
   const loadPlan = () =>
     Promise.all([api.get(`/phases/${id}`), api.get(`/phases/${id}/plan`), api.get(`/phases/${id}/meetings`)]).then(
@@ -429,7 +430,25 @@ export default function PhaseDetail() {
     }
   }
 
-  if (!phase) return <div className="muted">{error || 'Loading…'}</div>
+  if (!phase) {
+    return (
+      <div>
+        {error ? (
+          <div className="error">{error}</div>
+        ) : (
+          <div className="card">
+            <div className="skeleton skeleton-heading" />
+            <div className="skeleton-grid">
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-line" />
+              <div className="skeleton skeleton-line" />
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -440,12 +459,30 @@ export default function PhaseDetail() {
         <h2 style={{ margin: 0 }}>{phase.name}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <StatusBadge value={phase.status} />
-          <button className="btn btn-danger btn-sm" onClick={deletePhase}>
-            Delete Phase
-          </button>
         </div>
       </div>
 
+      <div className="tabs" role="tablist" aria-label="Phase sections">
+        {[
+          ['overview', 'Overview'],
+          ['modules', `Modules (${plan.length})`],
+          ['meetings', `Meetings (${meetings.length})`],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`tab-button ${activeTab === key ? 'active' : ''}`}
+            onClick={() => setActiveTab(key)}
+            role="tab"
+            aria-selected={activeTab === key}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'overview' && (
+        <>
       {!editing ? (
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="page-header" style={{ marginTop: 0 }}>
@@ -511,17 +548,46 @@ export default function PhaseDetail() {
             <p className="muted" style={{ marginBottom: 0 }}>
               Note: status auto-updates from activity progress unless set to "On Hold" or "Cancelled".
             </p>
+            <div className="danger-zone">
+              <div>
+                <strong>Delete this phase</strong>
+                <p className="muted">This removes its modules, activities, checklist items, and meetings.</p>
+              </div>
+              <button type="button" className="btn btn-danger btn-sm" onClick={deletePhase}>
+                Delete Phase
+              </button>
+            </div>
           </form>
         </div>
       )}
-
-      {plan.length > 0 && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
-          <ModuleTimeline modules={plan} />
-        </div>
+          {plan.length > 0 ? (
+            <>
+              <div className="card" style={{ marginBottom: '1rem' }}>
+                <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
+                <ModuleTimeline modules={plan} />
+              </div>
+              <div className="card">
+                <h3 style={{ marginTop: 0 }}>Gantt Timeline</h3>
+                <GanttTimeline
+                  modules={plan}
+                  phaseStart={phase.start_date}
+                  phaseEnd={phase.end_date}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="card empty-state">
+              <h3>No timeline yet</h3>
+              <p className="muted">Add modules to build the phase timeline.</p>
+              <button className="btn btn-primary btn-sm" onClick={() => setActiveTab('modules')}>
+                Add Modules
+              </button>
+            </div>
+          )}
+        </>
       )}
 
+      {activeTab === 'meetings' && (
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div className="page-header" style={{ marginTop: 0 }}>
           <h3 style={{ margin: 0 }}>Meetings & Communication Log</h3>
@@ -530,7 +596,10 @@ export default function PhaseDetail() {
           </button>
         </div>
         {meetings.length === 0 ? (
-          <p className="muted">No meetings recorded yet.</p>
+          <div className="empty-state compact">
+            <h3>No meetings yet</h3>
+            <p className="muted">Add the first meeting note, decision, or follow-up for this phase.</p>
+          </div>
         ) : (
           <div className="meetings-list">
             {meetings.map((m) => {
@@ -586,7 +655,9 @@ export default function PhaseDetail() {
           </div>
         )}
       </div>
+      )}
 
+      {activeTab === 'modules' && (
       <div className="phase-layout">
         <div className="phase-main">
           <div className="page-header">
@@ -618,7 +689,12 @@ export default function PhaseDetail() {
           {error && <div className="error">{error}</div>}
           <p className="muted">Adding a module auto-generates its predefined activities. Kickoff is included by default.</p>
 
-          {plan.length === 0 && <div className="muted">No modules added yet.</div>}
+          {plan.length === 0 && (
+            <div className="card empty-state compact">
+              <h3>No modules added yet</h3>
+              <p className="muted">Choose a module above to generate its implementation activities.</p>
+            </div>
+          )}
 
           {plan.map((pm) => (
             <div key={pm.id}>
@@ -790,19 +866,10 @@ export default function PhaseDetail() {
             </div>
           ))}
 
-          {plan.length > 0 && (
-            <div className="card" style={{ marginTop: '1rem' }}>
-              <h3 style={{ marginTop: 0 }}>Gantt Timeline</h3>
-              <GanttTimeline
-                modules={plan}
-                phaseStart={phase.start_date}
-                phaseEnd={phase.end_date}
-              />
-            </div>
-          )}
         </div>
 
       </div>
+      )}
 
       {meetingModalOpen && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeMeetingModal() }}>

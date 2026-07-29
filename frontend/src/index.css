@@ -575,6 +575,68 @@ body.dark .form-row select:focus {
   margin: 0.5rem 0;
 }
 
+.module-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.module-badge {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-more {
+  position: relative;
+  cursor: default;
+  overflow: visible;
+}
+
+.module-tooltip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 20;
+  display: none;
+  width: max-content;
+  max-width: 320px;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-body);
+  box-shadow: 0 6px 18px var(--shadow-lg);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.module-more:hover .module-tooltip {
+  display: block;
+}
+
+.danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.danger-zone strong {
+  color: var(--badge-red-text);
+}
+
+.danger-zone .muted {
+  margin: 0.15rem 0 0;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -724,6 +786,94 @@ body.dark .filter-group select {
 
 .filter-clear {
   margin-bottom: 0.15rem;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 0.7rem 0.85rem;
+  white-space: nowrap;
+}
+
+.tab-button:hover {
+  color: var(--primary-red);
+}
+
+.tab-button.active {
+  color: var(--primary-red);
+  border-bottom-color: var(--primary-red);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+}
+
+.empty-state.compact {
+  padding: 1.25rem;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.35rem;
+}
+
+.empty-state .muted {
+  margin: 0 0 0.85rem;
+}
+
+.skeleton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--bg-muted), var(--bg-hover), var(--bg-muted));
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-heading {
+  width: min(320px, 70%);
+  height: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+.skeleton-label {
+  width: 55%;
+  height: 0.75rem;
+}
+
+.skeleton-value {
+  width: 40%;
+  height: 2rem;
+  margin-top: 0.75rem;
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 0.9rem;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Recycle bin countdown */
@@ -1012,6 +1162,66 @@ body.dark .add-module-select {
   color: var(--primary-red);
 }
 
+.search-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.search-section {
+  margin-bottom: 0;
+}
+
+.search-result-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.25rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-body);
+  text-decoration: none;
+  background: var(--bg-input);
+}
+
+.search-result:hover {
+  border-color: var(--primary-red);
+}
+
+.search-result strong {
+  color: var(--text-heading);
+}
+
+.search-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.search-meta span:not(:last-child)::after {
+  content: "·";
+  margin-left: 0.4rem;
+  color: var(--text-muted);
+}
+
+.search-result-side {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
 @media (max-width: 1100px) {
   .dashboard-stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1043,6 +1253,12 @@ body.dark .add-module-select {
   .dashboard-stat-grid,
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .search-result,
+  .search-result-side {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
