@@ -515,7 +515,79 @@ export default function PhaseDetail() {
         </div>
       )}
 
-      <div className="phase-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1rem', alignItems: 'start' }}>
+      {plan.length > 0 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
+          <ModuleTimeline modules={plan} />
+        </div>
+      )}
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="page-header" style={{ marginTop: 0 }}>
+          <h3 style={{ margin: 0 }}>Meetings & Communication Log</h3>
+          <button className="btn btn-primary btn-sm" onClick={() => openMeetingModal()}>
+            + Add Meeting
+          </button>
+        </div>
+        {meetings.length === 0 ? (
+          <p className="muted">No meetings recorded yet.</p>
+        ) : (
+          <div className="meetings-list">
+            {meetings.map((m) => {
+              const isExpanded = expandedMeetings[m.id]
+              return (
+                <div className="meeting-card" key={m.id}>
+                  <div className="meeting-summary">
+                    <button
+                      type="button"
+                      className="meeting-toggle"
+                      onClick={() => setExpandedMeetings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
+                      aria-label={isExpanded ? 'Collapse meeting' : 'Expand meeting'}
+                      title={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      {isExpanded ? '▼' : '▶'}
+                    </button>
+                    <div className="meeting-summary-text">
+                      <strong className="meeting-title">{m.title}</strong>
+                      <span className="muted">{m.meeting_date}</span>
+                      {m.participants && <span className="muted">• {m.participants}</span>}
+                      {m.next_follow_up && <span className="muted">• Next: {m.next_follow_up}</span>}
+                    </div>
+                    <div className="actions">
+                      <button className="btn btn-secondary btn-sm" onClick={() => openMeetingModal(m)}>Edit</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => deleteMeeting(m)}>Delete</button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="meeting-details">
+                      {m.discussion && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Discussion / MoM</span>
+                          <p>{m.discussion}</p>
+                        </div>
+                      )}
+                      {m.decisions && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Decisions</span>
+                          <p>{m.decisions}</p>
+                        </div>
+                      )}
+                      {m.action_items && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Action Items</span>
+                          <p>{m.action_items}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="phase-layout">
         <div className="phase-main">
           <div className="page-header">
             <h3 style={{ margin: 0 }}>Modules & Implementation Plan</h3>
@@ -730,79 +802,6 @@ export default function PhaseDetail() {
           )}
         </div>
 
-        <div className="phase-sidebar">
-          {plan.length > 0 && (
-            <div className="card" style={{ marginBottom: '1rem' }}>
-              <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
-              <ModuleTimeline modules={plan} />
-            </div>
-          )}
-
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <div className="page-header" style={{ marginTop: 0 }}>
-              <h3 style={{ margin: 0 }}>Meetings & Communication Log</h3>
-              <button className="btn btn-primary btn-sm" onClick={() => openMeetingModal()}>
-                + Add Meeting
-              </button>
-            </div>
-            {meetings.length === 0 ? (
-              <p className="muted">No meetings recorded yet.</p>
-            ) : (
-              <div className="meetings-list">
-                {meetings.map((m) => {
-                  const isExpanded = expandedMeetings[m.id]
-                  return (
-                    <div className="meeting-card" key={m.id}>
-                      <div className="meeting-summary">
-                        <button
-                          type="button"
-                          className="meeting-toggle"
-                          onClick={() => setExpandedMeetings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
-                          aria-label={isExpanded ? 'Collapse meeting' : 'Expand meeting'}
-                          title={isExpanded ? 'Collapse' : 'Expand'}
-                        >
-                          {isExpanded ? '▼' : '▶'}
-                        </button>
-                        <div className="meeting-summary-text">
-                          <strong className="meeting-title">{m.title}</strong>
-                          <span className="muted">{m.meeting_date}</span>
-                          {m.participants && <span className="muted">• {m.participants}</span>}
-                          {m.next_follow_up && <span className="muted">• Next: {m.next_follow_up}</span>}
-                        </div>
-                        <div className="actions">
-                          <button className="btn btn-secondary btn-sm" onClick={() => openMeetingModal(m)}>Edit</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => deleteMeeting(m)}>Delete</button>
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <div className="meeting-details">
-                          {m.discussion && (
-                            <div className="meeting-field">
-                              <span className="meeting-label">Discussion / MoM</span>
-                              <p>{m.discussion}</p>
-                            </div>
-                          )}
-                          {m.decisions && (
-                            <div className="meeting-field">
-                              <span className="meeting-label">Decisions</span>
-                              <p>{m.decisions}</p>
-                            </div>
-                          )}
-                          {m.action_items && (
-                            <div className="meeting-field">
-                              <span className="meeting-label">Action Items</span>
-                              <p>{m.action_items}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {meetingModalOpen && (

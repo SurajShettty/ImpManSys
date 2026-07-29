@@ -63,6 +63,7 @@ export default function ClientDetail() {
   const [error, setError] = useState('')
   const [meetings, setMeetings] = useState([])
   const [expandedMeetings, setExpandedMeetings] = useState({})
+  const [clientDetailsExpanded, setClientDetailsExpanded] = useState(false)
 
   // Phase creation
   const [showForm, setShowForm] = useState(false)
@@ -161,36 +162,53 @@ export default function ClientDetail() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="page-header" style={{ marginTop: 0 }}>
             <h3 style={{ margin: 0 }}>Client Details</h3>
-            <button className="btn btn-secondary btn-sm" onClick={startEdit}>Edit</button>
+            <div className="client-details-actions">
+              <button
+                type="button"
+                className="btn btn-light btn-sm"
+                onClick={() => setClientDetailsExpanded((expanded) => !expanded)}
+                aria-expanded={clientDetailsExpanded}
+                aria-controls="client-extra-details"
+              >
+                {clientDetailsExpanded ? 'Hide Details' : 'Show Details'}
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={startEdit}>Edit</button>
+            </div>
           </div>
           <div className="stat-grid">
             <div><p className="stat-label">Institution Type</p><p>{client.institution_type || '—'}</p></div>
             <div><p className="stat-label">CRM ID</p><p>{client.crm_id || '—'}</p></div>
             <div><p className="stat-label">Priority</p><p>{client.priority}</p></div>
             <div><p className="stat-label">Status</p><p>{client.status}</p></div>
-            <div><p className="stat-label">Region</p><p>{client.region || '—'}</p></div>
-            <div><p className="stat-label">Implementation State</p><p>{client.implementation_state || '—'}</p></div>
-            <div><p className="stat-label">New / Recurring</p><p>{client.new_recurring || '—'}</p></div>
             <div><p className="stat-label">Contract</p><p>{client.contract_start || '—'} → {client.contract_end || '—'}</p></div>
             <div><p className="stat-label">Expected Go-Live</p><p>{client.go_live_date || '—'}</p></div>
-            <div><p className="stat-label">Agreed Go-Live</p><p>{client.agreed_go_live_date || '—'}</p></div>
-            <div><p className="stat-label">Kickoff Meeting</p><p>{client.kickoff_meeting_date || '—'}</p></div>
-            <div><p className="stat-label">Billing / Live Date</p><p>{client.billing_date || '—'}</p></div>
             <div><p className="stat-label">CSM</p><p>{client.csm?.name || '—'}</p></div>
             <div><p className="stat-label">Project Manager</p><p>{client.pm?.name || '—'}</p></div>
-            <div><p className="stat-label">Relationship Manager</p><p>{client.rm?.name || '—'}</p></div>
             <div><p className="stat-label">Sales Owner</p><p>{client.sales_owner || '—'}</p></div>
-            <div><p className="stat-label">Total Users</p><p>{client.total_users ?? '—'}</p></div>
-            <div><p className="stat-label">Master Data Status</p><p>{client.master_data_status || '—'}</p></div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <p className="stat-label">Instance Link</p>
-              {client.instance_link ? <a href={client.instance_link} target="_blank" rel="noreferrer">{client.instance_link}</a> : <p>—</p>}
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <p className="stat-label">Tracker Link</p>
-              {client.tracker_link ? <a href={client.tracker_link} target="_blank" rel="noreferrer">{client.tracker_link}</a> : <p>—</p>}
-            </div>
           </div>
+          {clientDetailsExpanded && (
+            <div id="client-extra-details" className="client-extra-details">
+              <div className="stat-grid">
+                <div><p className="stat-label">Region</p><p>{client.region || '—'}</p></div>
+                <div><p className="stat-label">Implementation State</p><p>{client.implementation_state || '—'}</p></div>
+                <div><p className="stat-label">New / Recurring</p><p>{client.new_recurring || '—'}</p></div>
+                <div><p className="stat-label">Agreed Go-Live</p><p>{client.agreed_go_live_date || '—'}</p></div>
+                <div><p className="stat-label">Kickoff Meeting</p><p>{client.kickoff_meeting_date || '—'}</p></div>
+                <div><p className="stat-label">Billing / Live Date</p><p>{client.billing_date || '—'}</p></div>
+                <div><p className="stat-label">Relationship Manager</p><p>{client.rm?.name || '—'}</p></div>
+                <div><p className="stat-label">Total Users</p><p>{client.total_users ?? '—'}</p></div>
+                <div><p className="stat-label">Master Data Status</p><p>{client.master_data_status || '—'}</p></div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p className="stat-label">Instance Link</p>
+                  {client.instance_link ? <a href={client.instance_link} target="_blank" rel="noreferrer">{client.instance_link}</a> : <p>—</p>}
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p className="stat-label">Tracker Link</p>
+                  {client.tracker_link ? <a href={client.tracker_link} target="_blank" rel="noreferrer">{client.tracker_link}</a> : <p>—</p>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="card" style={{ marginBottom: '1rem' }}>
