@@ -18,6 +18,7 @@ const PRIORITIES = ['Critical', 'High', 'Medium', 'Low']
 const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
 const REGIONS = ['North', 'South', 'East', 'West', 'Central']
 const NEW_RECURRING = ['New', 'Recurring']
+const IMPLEMENTATION_STATES = ['Go Live', 'Ongoing', 'Yet to start']
 
 // Fields the edit form manages, so we can build the payload generically.
 const EDITABLE_FIELDS = [
@@ -274,7 +275,10 @@ export default function ClientDetail() {
               </div>
               <div>
                 <label>Implementation State</label>
-                <input value={editForm.implementation_state} onChange={setEdit('implementation_state')} placeholder="e.g. Go Live" />
+                <select value={editForm.implementation_state} onChange={setEdit('implementation_state')}>
+                  <option value="">Select…</option>
+                  {IMPLEMENTATION_STATES.map((s) => <option key={s}>{s}</option>)}
+                </select>
               </div>
               <div>
                 <label>New / Recurring</label>

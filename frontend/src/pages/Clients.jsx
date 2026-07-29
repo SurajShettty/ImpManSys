@@ -20,6 +20,8 @@ const BLANK = {
 
 const REGIONS = ['North', 'South', 'East', 'West', 'Central']
 const NEW_RECURRING = ['New', 'Recurring']
+const IMPLEMENTATION_STATES = ['Go Live', 'Ongoing', 'Yet to start']
+const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
 
 export default function Clients() {
   const [clients, setClients] = useState([])
@@ -27,6 +29,7 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
+  const [filters, setFilters] = useState({ region: '', status: '', implementation_state: '' })
 
   const load = () => {
     api.get('/clients/').then((res) => setClients(res.data)).catch(() => setError('Failed to load clients'))
@@ -54,6 +57,13 @@ export default function Clients() {
   }
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
+  const filteredClients = clients.filter((c) => {
+    if (filters.region && c.region !== filters.region) return false
+    if (filters.status && c.status !== filters.status) return false
+    if (filters.implementation_state && c.implementation_state !== filters.implementation_state) return false
+    return true
+  })
 
   return (
     <div>
@@ -108,7 +118,10 @@ export default function Clients() {
               </div>
               <div>
                 <label>Implementation State</label>
-                <input value={form.implementation_state} onChange={set('implementation_state')} placeholder="e.g. Go Live" />
+                <select value={form.implementation_state} onChange={set('implementation_state')}>
+                  <option value="">Select…</option>
+                  {IMPLEMENTATION_STATES.map((s) => <option key={s}>{s}</option>)}
+                </select>
               </div>
               <div>
                 <label>New / Recurring</label>
@@ -139,6 +152,32 @@ export default function Clients() {
         </div>
       )}
 
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="form-row" style={{ marginBottom: 0 }}>
+          <div>
+            <label>Region</label>
+            <select value={filters.region} onChange={(e) => setFilters({ ...filters, region: e.target.value })}>
+              <option value="">All</option>
+              {REGIONS.map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Status</label>
+            <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
+              <option value="">All</option>
+              {CLIENT_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Implementation State</label>
+            <select value={filters.implementation_state} onChange={(e) => setFilters({ ...filters, implementation_state: e.target.value })}>
+              <option value="">All</option>
+              {IMPLEMENTATION_STATES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="table">
           <thead>
@@ -149,6 +188,7 @@ export default function Clients() {
               <th>Status</th>
               <th>Implementation State</th>
               <th>New / Recurring</th>
+              <th>Instance Link</th>
               <th>Kickoff</th>
               <th>Billing / Go-Live</th>
               <th>Total Users</th>
@@ -156,7 +196,7 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody>
-            {clients.map((c) => (
+            {filteredClients.map((c) => (
               <tr key={c.id}>
                 <td><Link to={`/clients/${c.id}`}>{c.name}</Link></td>
                 <td>{c.region || '—'}</td>
@@ -164,14 +204,21 @@ export default function Clients() {
                 <td><StatusBadge value={c.status} /></td>
                 <td>{c.implementation_state || '—'}</td>
                 <td>{c.new_recurring || '—'}</td>
+                <td>
+                  {c.instance_link ? (
+                    <a href={c.instance_link} target="_blank" rel="noreferrer">Open</a>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td>{c.kickoff_meeting_date || '—'}</td>
                 <td>{c.billing_date || '—'}</td>
                 <td>{c.total_users ?? '—'}</td>
                 <td>{c.project_count}</td>
               </tr>
             ))}
-            {clients.length === 0 && (
-              <tr><td colSpan={10} className="muted" style={{ textAlign: 'center' }}>No clients yet.</td></tr>
+            {filteredClients.length === 0 && (
+              <tr><td colSpan={11} className="muted" style={{ textAlign: 'center' }}>No clients match the filters.</td></tr>
             )}
           </tbody>
         </table>
