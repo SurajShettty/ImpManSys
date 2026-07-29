@@ -7,7 +7,7 @@ from app.dependencies import get_current_active_user, require_permission
 
 router = APIRouter()
 
-ACTIVE_PROJECT_STATUSES = ("Not Started", "In Progress", "On Hold")
+ACTIVE_PHASE_STATUSES = ("Not Started", "In Progress", "On Hold")
 
 
 @router.get("/summary")
@@ -24,23 +24,23 @@ def dashboard_summary(
         next_month = today.replace(month=today.month + 1, day=1)
 
     total_clients = db.query(models.Client).filter(models.Client.is_deleted == False).count()
-    total_projects = db.query(models.Project).filter(models.Project.is_deleted == False).count()
+    total_phases = db.query(models.Phase).filter(models.Phase.is_deleted == False).count()
 
-    active_projects = (
-        db.query(models.Project)
-        .filter(models.Project.is_deleted == False, models.Project.status.in_(ACTIVE_PROJECT_STATUSES))
+    active_phases = (
+        db.query(models.Phase)
+        .filter(models.Phase.is_deleted == False, models.Phase.status.in_(ACTIVE_PHASE_STATUSES))
         .count()
     )
 
     # Delayed: not completed and past its planned end date.
-    delayed_projects = (
-        db.query(models.Project)
+    delayed_phases = (
+        db.query(models.Phase)
         .filter(
-            models.Project.is_deleted == False,
-            models.Project.status != "Completed",
-            models.Project.status != "Cancelled",
-            models.Project.end_date.isnot(None),
-            models.Project.end_date < today,
+            models.Phase.is_deleted == False,
+            models.Phase.status != "Completed",
+            models.Phase.status != "Cancelled",
+            models.Phase.end_date.isnot(None),
+            models.Phase.end_date < today,
         )
         .count()
     )
@@ -58,8 +58,8 @@ def dashboard_summary(
 
     return {
         "total_clients": total_clients,
-        "total_projects": total_projects,
-        "active_projects": active_projects,
-        "delayed_projects": delayed_projects,
+        "total_phases": total_phases,
+        "active_phases": active_phases,
+        "delayed_phases": delayed_phases,
         "go_live_this_month": go_live_this_month,
     }

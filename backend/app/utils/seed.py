@@ -6,8 +6,8 @@ from app.auth import get_password_hash
 DEFAULT_ROLES = [
     {"name": "Administrator", "description": "Full system access"},
     {"name": "Customer Success Manager", "description": "Manages client relationships"},
-    {"name": "Project Manager", "description": "Manages projects and resources"},
-    {"name": "Implementation Executive", "description": "Executes implementation tasks"},
+    {"name": "Project Manager", "description": "Manages phases and resources"},
+    {"name": "Implementation Executive", "description": "Executes implementation activities"},
     {"name": "Data Team", "description": "Handles data and reports"},
     {"name": "Support Team", "description": "Provides client support"},
     {"name": "Management", "description": "Views dashboards and reports"},
@@ -33,27 +33,42 @@ PERMISSIONS = [
     {"code": "client.create", "name": "Create Clients", "category": "Clients"},
     {"code": "client.update", "name": "Edit Clients", "category": "Clients"},
     {"code": "client.delete", "name": "Delete Clients", "category": "Clients"},
-    # Projects
-    {"code": "project.view", "name": "View Projects", "category": "Projects"},
-    {"code": "project.create", "name": "Create Projects", "category": "Projects"},
-    {"code": "project.update", "name": "Edit Projects", "category": "Projects"},
-    {"code": "project.delete", "name": "Delete Projects", "category": "Projects"},
+    # Phases (formerly projects)
+    {"code": "phase.view", "name": "View Phases", "category": "Phases"},
+    {"code": "phase.create", "name": "Create Phases", "category": "Phases"},
+    {"code": "phase.update", "name": "Edit Phases", "category": "Phases"},
+    {"code": "phase.delete", "name": "Delete Phases", "category": "Phases"},
     # Modules
     {"code": "module.view", "name": "View Modules", "category": "Modules"},
     {"code": "module.create", "name": "Add Modules", "category": "Modules"},
     {"code": "module.update", "name": "Edit Modules", "category": "Modules"},
     {"code": "module.delete", "name": "Remove Modules", "category": "Modules"},
-    # Tasks
-    {"code": "task.view", "name": "View Tasks", "category": "Tasks"},
-    {"code": "task.create", "name": "Create Tasks", "category": "Tasks"},
-    {"code": "task.update", "name": "Edit Tasks", "category": "Tasks"},
-    {"code": "task.delete", "name": "Delete Tasks", "category": "Tasks"},
+    # Activities (formerly tasks)
+    {"code": "activity.view", "name": "View Activities", "category": "Activities"},
+    {"code": "activity.create", "name": "Create Activities", "category": "Activities"},
+    {"code": "activity.update", "name": "Edit Activities", "category": "Activities"},
+    {"code": "activity.delete", "name": "Delete Activities", "category": "Activities"},
     # Meetings
     {"code": "meeting.view", "name": "View Meetings", "category": "Meetings"},
     {"code": "meeting.create", "name": "Create Meetings", "category": "Meetings"},
     {"code": "meeting.update", "name": "Edit Meetings", "category": "Meetings"},
     {"code": "meeting.delete", "name": "Delete Meetings", "category": "Meetings"},
 ]
+
+# Permission codes that were renamed from the previous project/task terminology.
+# Existing records are migrated on startup so role mappings are preserved.
+PERMISSION_RENAMES = {
+    "project.view": "phase.view",
+    "project.create": "phase.create",
+    "project.update": "phase.update",
+    "project.delete": "phase.delete",
+    "task.view": "activity.view",
+    "task.create": "activity.create",
+    "task.update": "activity.update",
+    "task.delete": "activity.delete",
+}
+
+PERMISSION_NAME_MAP = {p["code"]: p["name"] for p in PERMISSIONS}
 
 ROLE_PERMISSIONS = {
     "Administrator": [p["code"] for p in PERMISSIONS],
@@ -62,9 +77,9 @@ ROLE_PERMISSIONS = {
         "search.view",
         "audit.view",
         "client.view",
-        "project.view",
+        "phase.view",
         "module.view",
-        "task.view",
+        "activity.view",
         "meeting.view",
         "user.view",
         "recycle_bin.view",
@@ -76,15 +91,15 @@ ROLE_PERMISSIONS = {
         "client.view",
         "client.create",
         "client.update",
-        "project.view",
-        "project.create",
-        "project.update",
-        "project.delete",
+        "phase.view",
+        "phase.create",
+        "phase.update",
+        "phase.delete",
         "module.view",
         "module.create",
-        "task.view",
-        "task.create",
-        "task.update",
+        "activity.view",
+        "activity.create",
+        "activity.update",
         "meeting.view",
         "meeting.create",
         "meeting.update",
@@ -94,18 +109,18 @@ ROLE_PERMISSIONS = {
         "dashboard.view",
         "search.view",
         "client.view",
-        "project.view",
-        "project.create",
-        "project.update",
-        "project.delete",
+        "phase.view",
+        "phase.create",
+        "phase.update",
+        "phase.delete",
         "module.view",
         "module.create",
         "module.update",
         "module.delete",
-        "task.view",
-        "task.create",
-        "task.update",
-        "task.delete",
+        "activity.view",
+        "activity.create",
+        "activity.update",
+        "activity.delete",
         "meeting.view",
         "meeting.create",
         "meeting.update",
@@ -115,54 +130,59 @@ ROLE_PERMISSIONS = {
         "dashboard.view",
         "search.view",
         "client.view",
-        "project.view",
+        "phase.view",
         "module.view",
-        "task.view",
-        "task.create",
-        "task.update",
+        "activity.view",
+        "activity.create",
+        "activity.update",
         "meeting.view",
     ],
     "Data Team": [
         "dashboard.view",
         "search.view",
         "client.view",
-        "project.view",
+        "phase.view",
         "module.view",
-        "task.view",
+        "activity.view",
     ],
     "Support Team": [
         "dashboard.view",
         "search.view",
         "client.view",
-        "project.view",
-        "task.view",
+        "phase.view",
+        "activity.view",
         "meeting.view",
     ],
     "Client": [
         "dashboard.view",
-        "project.view",
-        "task.view",
+        "phase.view",
+        "activity.view",
         "meeting.view",
     ],
 }
 
-# Standard implementable modules (SOP section 5, stage 3).
+# Standard implementable modules from the product implementation sheet.
+# "Kickoff" is added automatically to every phase; it is included here so the
+# master catalogue has it available.
 DEFAULT_MODULES = [
-    {"name": "Admissions", "category": "Academic"},
-    {"name": "Attendance", "category": "Academic"},
-    {"name": "Academics", "category": "Academic"},
-    {"name": "Finance", "category": "Administrative"},
-    {"name": "Examination", "category": "Academic"},
-    {"name": "Hostel", "category": "Administrative"},
-    {"name": "Transport", "category": "Administrative"},
-    {"name": "Library", "category": "Academic"},
-    {"name": "LMS", "category": "Academic"},
-    {"name": "Feedback", "category": "Engagement"},
-    {"name": "Placement", "category": "Engagement"},
-    {"name": "Research", "category": "Academic"},
-    {"name": "Alumni", "category": "Engagement"},
-    {"name": "Campus Help Centre", "category": "Support"},
-    {"name": "Analytics", "category": "Reporting"},
+    {"name": "Kickoff", "category": "Onboarding"},
+    {"name": "Master data Managament", "category": "Core"},
+    {"name": "Admission Mangagement", "category": "Academic"},
+    {"name": "Finance Managament", "category": "Administrative"},
+    {"name": "Infrastructure Management", "category": "Infrastructure"},
+    {"name": "Institutional Calendar", "category": "Academic"},
+    {"name": "Academic Management System", "category": "Academic"},
+    {"name": "Feedback Management", "category": "Engagement"},
+    {"name": "Examination Management System", "category": "Academic"},
+    {"name": "Learning Managment System", "category": "Academic"},
+    {"name": "Hostel Managament", "category": "Administrative"},
+    {"name": "Placement and Internship", "category": "Engagement"},
+    {"name": "Transportation Management", "category": "Administrative"},
+    {"name": "Member Records (student, faculty,staff,parent)", "category": "Core"},
+    {"name": "Campus Help Center", "category": "Support"},
+    {"name": "HR Management", "category": "Administrative"},
+    {"name": "Booth Mangmeent", "category": "Other"},
+    {"name": "Koha", "category": "Integration"},
 ]
 
 
@@ -174,11 +194,12 @@ def seed_data(db: Session) -> None:
             db.add(models.Role(**role_data))
     db.commit()
 
-    # Seed module catalogue
-    existing_modules = {m.name for m in db.query(models.Module).all()}
-    for module_data in DEFAULT_MODULES:
-        if module_data["name"] not in existing_modules:
-            db.add(models.Module(**module_data))
+    # Migrate renamed permission codes so existing role mappings stay valid.
+    for old_code, new_code in PERMISSION_RENAMES.items():
+        perm = db.query(models.Permission).filter(models.Permission.code == old_code).first()
+        if perm:
+            perm.code = new_code
+            perm.name = PERMISSION_NAME_MAP.get(new_code, perm.name)
     db.commit()
 
     # Seed permissions
@@ -203,6 +224,13 @@ def seed_data(db: Session) -> None:
             if perm and code not in current_codes:
                 role.permissions.append(perm)
         db.commit()
+
+    # Seed module catalogue
+    existing_modules = {m.name for m in db.query(models.Module).all()}
+    for module_data in DEFAULT_MODULES:
+        if module_data["name"] not in existing_modules:
+            db.add(models.Module(**module_data))
+    db.commit()
 
     # Seed admin user if not present
     admin_email = "admin@ims.local"

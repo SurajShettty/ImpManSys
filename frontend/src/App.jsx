@@ -4,8 +4,8 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Clients from './pages/Clients'
 import ClientDetail from './pages/ClientDetail'
-import Projects from './pages/Projects'
-import ProjectDetail from './pages/ProjectDetail'
+import Phases from './pages/Phases'
+import PhaseDetail from './pages/PhaseDetail'
 import Users from './pages/Users'
 import SearchResults from './pages/SearchResults'
 import AuditLogs from './pages/AuditLogs'
@@ -30,8 +30,8 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/clients/:id" element={<ClientDetail />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/phases" element={<Phases />} />
+        <Route path="/phases/:id" element={<PhaseDetail />} />
         <Route path="/search" element={<SearchResults />} />
         <Route
           path="/users"

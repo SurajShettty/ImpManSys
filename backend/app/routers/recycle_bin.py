@@ -5,7 +5,7 @@ from app.database import get_db
 from app import models
 from app.dependencies import require_permission
 from app.utils.audit import log_activity
-from app.services.templates import recompute_project_module_progress
+from app.services.templates import recompute_phase_module_progress
 
 router = APIRouter()
 
@@ -13,25 +13,25 @@ router = APIRouter()
 RETENTION = timedelta(hours=12)
 
 
-def _restore_project(db: Session, project: models.Project) -> None:
-    project.is_deleted = False
-    project.deleted_at = None
-    for pm in project.project_modules:
-        _restore_project_module(db, pm)
+def _restore_phase(db: Session, phase: models.Phase) -> None:
+    phase.is_deleted = False
+    phase.deleted_at = None
+    for pm in phase.phase_modules:
+        _restore_phase_module(db, pm)
+    for meeting in phase.meetings:
+        meeting.is_deleted = False
+        meeting.deleted_at = None
 
 
-def _restore_project_module(db: Session, pm: models.ProjectModule) -> None:
+def _restore_phase_module(db: Session, pm: models.PhaseModule) -> None:
     pm.is_deleted = False
     pm.deleted_at = None
-    for phase in pm.phases:
-        phase.is_deleted = False
-        phase.deleted_at = None
-        for task in phase.tasks:
-            task.is_deleted = False
-            task.deleted_at = None
-            for item in task.checklist_items:
-                item.is_deleted = False
-                item.deleted_at = None
+    for activity in pm.activities:
+        activity.is_deleted = False
+        activity.deleted_at = None
+        for item in activity.checklist_items:
+            item.is_deleted = False
+            item.deleted_at = None
 
 
 @router.get("/")
@@ -48,16 +48,16 @@ def list_deleted_items(
         .order_by(models.Client.deleted_at.desc())
         .all()
     )
-    projects = (
-        db.query(models.Project)
-        .filter(models.Project.is_deleted == True, models.Project.deleted_at >= cutoff)
-        .order_by(models.Project.deleted_at.desc())
+    phases = (
+        db.query(models.Phase)
+        .filter(models.Phase.is_deleted == True, models.Phase.deleted_at >= cutoff)
+        .order_by(models.Phase.deleted_at.desc())
         .all()
     )
-    tasks = (
-        db.query(models.Task)
-        .filter(models.Task.is_deleted == True, models.Task.deleted_at >= cutoff)
-        .order_by(models.Task.deleted_at.desc())
+    activities = (
+        db.query(models.Activity)
+        .filter(models.Activity.is_deleted == True, models.Activity.deleted_at >= cutoff)
+        .order_by(models.Activity.deleted_at.desc())
         .all()
     )
     users = (
@@ -88,7 +88,7 @@ def list_deleted_items(
             }
             for c in clients
         ],
-        "projects": [
+        "phases": [
             {
                 "id": p.id,
                 "name": p.name,
@@ -97,19 +97,19 @@ def list_deleted_items(
                 "deleted_at": p.deleted_at.isoformat() if p.deleted_at else None,
                 "expires_at": expires(p.deleted_at),
             }
-            for p in projects
+            for p in phases
         ],
-        "tasks": [
+        "activities": [
             {
-                "id": t.id,
-                "title": t.title,
-                "project_id": t.phase.project_module.project_id,
-                "project_name": t.phase.project_module.project.name,
-                "deleted_at": t.deleted_at.isoformat() if t.deleted_at else None,
-                "expires_at": expires(t.deleted_at),
+                "id": a.id,
+                "title": a.title,
+                "phase_id": a.phase_module.phase_id,
+                "phase_name": a.phase_module.phase.name,
+                "deleted_at": a.deleted_at.isoformat() if a.deleted_at else None,
+                "expires_at": expires(a.deleted_at),
             }
-            for t in tasks
-            if t.phase and t.phase.project_module and t.phase.project_module.project
+            for a in activities
+            if a.phase_module and a.phase_module.phase
         ],
         "users": [
             {
@@ -125,8 +125,8 @@ def list_deleted_items(
             {
                 "id": m.id,
                 "title": m.title,
-                "project_id": m.project_id,
-                "project_name": m.project.name if m.project else None,
+                "phase_id": m.phase_id,
+                "phase_name": m.phase.name if m.phase else None,
                 "deleted_at": m.deleted_at.isoformat() if m.deleted_at else None,
                 "expires_at": expires(m.deleted_at),
             }
@@ -162,33 +162,33 @@ def restore_item(
         _not_expired(item)
         item.is_deleted = False
         item.deleted_at = None
-        for project in item.projects:
-            _restore_project(db, project)
+        for phase in item.phases:
+            _restore_phase(db, phase)
 
-    elif entity == "projects":
-        item = db.query(models.Project).filter(models.Project.id == item_id, models.Project.is_deleted == True).first()
+    elif entity == "phases":
+        item = db.query(models.Phase).filter(models.Phase.id == item_id, models.Phase.is_deleted == True).first()
         if not item:
-            raise HTTPException(status_code=404, detail="Project not found in recycle bin")
+            raise HTTPException(status_code=404, detail="Phase not found in recycle bin")
         _not_expired(item)
         if item.client and item.client.is_deleted:
             raise HTTPException(status_code=400, detail="Restore the client first")
-        _restore_project(db, item)
+        _restore_phase(db, item)
 
-    elif entity == "tasks":
-        item = db.query(models.Task).filter(models.Task.id == item_id, models.Task.is_deleted == True).first()
+    elif entity == "activities":
+        item = db.query(models.Activity).filter(models.Activity.id == item_id, models.Activity.is_deleted == True).first()
         if not item:
-            raise HTTPException(status_code=404, detail="Task not found in recycle bin")
+            raise HTTPException(status_code=404, detail="Activity not found in recycle bin")
         _not_expired(item)
-        pm = item.phase.project_module
-        if pm.is_deleted or pm.project.is_deleted or (pm.project.client and pm.project.client.is_deleted):
-            raise HTTPException(status_code=400, detail="Restore the parent project/client first")
+        pm = item.phase_module
+        if pm.is_deleted or pm.phase.is_deleted or (pm.phase.client and pm.phase.client.is_deleted):
+            raise HTTPException(status_code=400, detail="Restore the parent phase/client first")
         item.is_deleted = False
         item.deleted_at = None
         for ci in item.checklist_items:
             ci.is_deleted = False
             ci.deleted_at = None
         db.flush()
-        recompute_project_module_progress(db, pm)
+        recompute_phase_module_progress(db, pm)
 
     elif entity == "users":
         item = db.query(models.User).filter(models.User.id == item_id, models.User.is_deleted == True).first()
@@ -203,8 +203,8 @@ def restore_item(
         if not item:
             raise HTTPException(status_code=404, detail="Meeting not found in recycle bin")
         _not_expired(item)
-        if item.project and item.project.is_deleted:
-            raise HTTPException(status_code=400, detail="Restore the parent project first")
+        if item.phase and item.phase.is_deleted:
+            raise HTTPException(status_code=400, detail="Restore the parent phase first")
         item.is_deleted = False
         item.deleted_at = None
 

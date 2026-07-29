@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import api from '../api/client'
 
-const ENTITIES = ['client', 'project', 'project_module', 'module', 'task', 'phase', 'user']
+const ENTITIES = ['client', 'phase', 'phase_module', 'module', 'activity', 'user']
 const ACTIONS = ['create', 'update', 'delete', 'restore']
 const PAGE_SIZE = 20
 

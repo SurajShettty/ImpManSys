@@ -75,7 +75,7 @@ class ActivityLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    entity = Column(String(50), nullable=False)  # e.g. client, project, task
+    entity = Column(String(50), nullable=False)  # e.g. client, phase, activity
     action = Column(String(50), nullable=False)  # e.g. create, update, delete
     timestamp = Column(DateTime, default=utc_now, nullable=False)
     details = Column(Text, nullable=True)
@@ -84,7 +84,7 @@ class ActivityLog(Base):
 
 
 # ---------------------------------------------------------------------------
-# Implementation hierarchy: Client -> Project -> Module -> Phase -> Task
+# Implementation hierarchy: Client -> Phase -> Module -> Activity
 # Reference: docs/IMS_Database_Design.md and docs/Implementation_Management_System_SOP.md
 # ---------------------------------------------------------------------------
 
@@ -126,13 +126,15 @@ class Client(Base):
     csm = relationship("User", foreign_keys=[csm_id])
     pm = relationship("User", foreign_keys=[pm_id])
     rm = relationship("User", foreign_keys=[rm_id])
-    projects = relationship(
-        "Project", back_populates="client", cascade="all, delete-orphan"
+    phases = relationship(
+        "Phase", back_populates="client", cascade="all, delete-orphan"
     )
 
 
-class Project(Base):
-    __tablename__ = "projects"
+class Phase(Base):
+    """A client implementation phase (formerly project)."""
+
+    __tablename__ = "phases"
 
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False, index=True)
@@ -148,12 +150,12 @@ class Project(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
-    client = relationship("Client", back_populates="projects")
-    project_modules = relationship(
-        "ProjectModule", back_populates="project", cascade="all, delete-orphan"
+    client = relationship("Client", back_populates="phases")
+    phase_modules = relationship(
+        "PhaseModule", back_populates="phase", cascade="all, delete-orphan"
     )
     meetings = relationship(
-        "Meeting", back_populates="project", cascade="all, delete-orphan"
+        "Meeting", back_populates="phase", cascade="all, delete-orphan"
     )
 
 
@@ -170,54 +172,38 @@ class Module(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class ProjectModule(Base):
-    """A module selected for a specific project (generates its own phase/task plan)."""
+class PhaseModule(Base):
+    """A module selected for a specific phase (generates its own activity plan)."""
 
-    __tablename__ = "project_modules"
+    __tablename__ = "phase_modules"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    phase_id = Column(Integer, ForeignKey("phases.id"), nullable=False, index=True)
     module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
     status = Column(String(30), nullable=False, default="Not Started")
-    progress = Column(Float, nullable=False, default=0.0)  # 0-100, derived from tasks
+    progress = Column(Float, nullable=False, default=0.0)  # 0-100, derived from activities
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
-    project = relationship("Project", back_populates="project_modules")
+    phase = relationship("Phase", back_populates="phase_modules")
     module = relationship("Module")
-    phases = relationship(
-        "Phase", back_populates="project_module", cascade="all, delete-orphan"
-    )
-
-
-class Phase(Base):
-    __tablename__ = "phases"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_module_id = Column(
-        Integer, ForeignKey("project_modules.id"), nullable=False, index=True
-    )
-    name = Column(String(100), nullable=False)
-    sequence = Column(Integer, nullable=False, default=0)
-    is_deleted = Column(Boolean, default=False, nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
-
-    project_module = relationship("ProjectModule", back_populates="phases")
-    tasks = relationship(
-        "Task",
-        back_populates="phase",
+    activities = relationship(
+        "Activity",
+        back_populates="phase_module",
         cascade="all, delete-orphan",
-        order_by="Task.sequence",
+        order_by="Activity.sequence",
     )
 
 
-class Task(Base):
-    __tablename__ = "tasks"
+class Activity(Base):
+    """A single implementation activity within a module (formerly task)."""
+
+    __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True, index=True)
-    phase_id = Column(Integer, ForeignKey("phases.id"), nullable=False, index=True)
-    parent_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
+    phase_module_id = Column(Integer, ForeignKey("phase_modules.id"), nullable=False, index=True)
+    parent_activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     title = Column(String(200), nullable=False)
@@ -249,16 +235,16 @@ class Task(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
-    phase = relationship("Phase", back_populates="tasks")
+    phase_module = relationship("PhaseModule", back_populates="activities")
     owner = relationship("User", foreign_keys=[owner_id])
     reviewer = relationship("User", foreign_keys=[reviewer_id])
     checklist_items = relationship(
-        "ChecklistItem", back_populates="task", cascade="all, delete-orphan"
+        "ChecklistItem", back_populates="activity", cascade="all, delete-orphan"
     )
     dependencies = relationship(
-        "TaskDependency",
-        back_populates="task",
-        foreign_keys="TaskDependency.task_id",
+        "ActivityDependency",
+        back_populates="activity",
+        foreign_keys="ActivityDependency.activity_id",
         cascade="all, delete-orphan",
     )
 
@@ -267,24 +253,24 @@ class ChecklistItem(Base):
     __tablename__ = "checklist_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
+    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=False, index=True)
     item = Column(String(255), nullable=False)
     completed = Column(Boolean, nullable=False, default=False)
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
 
-    task = relationship("Task", back_populates="checklist_items")
+    activity = relationship("Activity", back_populates="checklist_items")
 
 
-class TaskDependency(Base):
-    __tablename__ = "task_dependencies"
+class ActivityDependency(Base):
+    __tablename__ = "activity_dependencies"
 
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False, index=True)
-    depends_on_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=False, index=True)
+    depends_on_activity_id = Column(Integer, ForeignKey("activities.id"), nullable=False)
 
-    task = relationship("Task", back_populates="dependencies", foreign_keys=[task_id])
-    depends_on = relationship("Task", foreign_keys=[depends_on_task_id])
+    activity = relationship("Activity", back_populates="dependencies", foreign_keys=[activity_id])
+    depends_on = relationship("Activity", foreign_keys=[depends_on_activity_id])
 
 
 class Meeting(Base):
@@ -293,7 +279,7 @@ class Meeting(Base):
     __tablename__ = "meetings"
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    phase_id = Column(Integer, ForeignKey("phases.id"), nullable=False, index=True)
     title = Column(String(200), nullable=False)
     meeting_date = Column(Date, nullable=False)
     participants = Column(String(255), nullable=True)
@@ -307,5 +293,5 @@ class Meeting(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
-    project = relationship("Project", back_populates="meetings")
+    phase = relationship("Phase", back_populates="meetings")
     creator = relationship("User")

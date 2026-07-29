@@ -106,7 +106,7 @@ export default function Layout() {
           <div className="navbar-links">
             <NavLink to="/" end className="nav-link">Dashboard</NavLink>
             <NavLink to="/clients" className="nav-link">Clients</NavLink>
-            <NavLink to="/projects" className="nav-link">Projects</NavLink>
+            <NavLink to="/phases" className="nav-link">Phases</NavLink>
             {user?.permissions?.includes('user.view') && (
               <NavLink to="/users" className="nav-link">Users</NavLink>
             )}

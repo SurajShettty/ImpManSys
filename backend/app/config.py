@@ -1,5 +1,14 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+
+
+def _parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes", "debug")
+    return bool(value)
 
 
 class Settings(BaseSettings):
@@ -16,6 +25,11 @@ class Settings(BaseSettings):
     db_user: str = "ims"
     db_password: str = "ims"
     db_name: str = "ims"
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def _debug_bool(cls, value):
+        return _parse_bool(value)
 
     @property
     def database_url(self) -> str:

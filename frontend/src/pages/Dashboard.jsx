@@ -4,10 +4,10 @@ import api from '../api/client'
 
 const CARDS = [
   { key: 'total_clients', label: 'Total Clients' },
-  { key: 'active_projects', label: 'Active Projects' },
-  { key: 'delayed_projects', label: 'Delayed Projects' },
+  { key: 'active_phases', label: 'Active Phases' },
+  { key: 'delayed_phases', label: 'Delayed Phases' },
   { key: 'go_live_this_month', label: 'Go-Live This Month' },
-  { key: 'total_projects', label: 'Total Projects' },
+  { key: 'total_phases', label: 'Total Phases' },
 ]
 
 export default function Dashboard() {

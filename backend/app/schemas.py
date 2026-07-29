@@ -120,8 +120,8 @@ class UserBrief(BaseModel):
     email: str  # plain string on output to avoid strict email validation for existing data
 
 
-# ---------- Reusable mini project ----------
-class ProjectBrief(BaseModel):
+# ---------- Reusable mini phase ----------
+class PhaseBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
@@ -194,11 +194,11 @@ class ClientResponse(ClientBase):
     csm: UserBrief | None = None
     pm: UserBrief | None = None
     rm: UserBrief | None = None
-    project_count: int = 0
+    phase_count: int = 0
 
 
-# ---------- Project ----------
-class ProjectBase(BaseModel):
+# ---------- Phase ----------
+class PhaseBase(BaseModel):
     name: str
     description: str | None = None
     type: str = "New Implementation"
@@ -207,11 +207,11 @@ class ProjectBase(BaseModel):
     end_date: date | None = None
 
 
-class ProjectCreate(ProjectBase):
+class PhaseCreate(PhaseBase):
     client_id: int
 
 
-class ProjectUpdate(BaseModel):
+class PhaseUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     type: str | None = None
@@ -220,7 +220,7 @@ class ProjectUpdate(BaseModel):
     end_date: date | None = None
 
 
-class ProjectResponse(ProjectBase):
+class PhaseResponse(PhaseBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
     client_id: int
@@ -263,11 +263,11 @@ class ChecklistItemUpdate(BaseModel):
 class ChecklistItemResponse(ChecklistItemBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    task_id: int
+    activity_id: int
 
 
-# ---------- Task ----------
-class TaskBase(BaseModel):
+# ---------- Activity ----------
+class ActivityBase(BaseModel):
     title: str
     description: str | None = None
     priority: str = "Medium"
@@ -291,12 +291,11 @@ class TaskBase(BaseModel):
     module_status: str | None = None
 
 
-class TaskCreate(TaskBase):
-    phase_id: int
-    parent_task_id: int | None = None
+class ActivityCreate(ActivityBase):
+    phase_module_id: int
 
 
-class TaskUpdate(BaseModel):
+class ActivityUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     priority: str | None = None
@@ -321,11 +320,11 @@ class TaskUpdate(BaseModel):
     module_status: str | None = None
 
 
-class TaskResponse(TaskBase):
+class ActivityResponse(ActivityBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    phase_id: int
-    parent_task_id: int | None = None
+    phase_module_id: int
+    parent_activity_id: int | None = None
     progress: float
     sequence: int = 0
     created_at: datetime
@@ -335,33 +334,23 @@ class TaskResponse(TaskBase):
     checklist_items: list[ChecklistItemResponse] = []
 
 
-# ---------- Phase ----------
-class PhaseResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    project_module_id: int
-    name: str
-    sequence: int
-    tasks: list[TaskResponse] = []
-
-
-# ---------- Project module ----------
-class ProjectModuleCreate(BaseModel):
+# ---------- Phase module ----------
+class PhaseModuleCreate(BaseModel):
     module_id: int
 
 
-class ProjectModuleResponse(BaseModel):
+class PhaseModuleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    project_id: int
+    phase_id: int
     module_id: int
     status: str
     progress: float
     module: ModuleResponse | None = None
 
 
-class ProjectModuleDetail(ProjectModuleResponse):
-    phases: list[PhaseResponse] = []
+class PhaseModuleDetail(PhaseModuleResponse):
+    activities: list[ActivityResponse] = []
 
 
 # ---------- Meeting ----------
@@ -392,12 +381,12 @@ class MeetingUpdate(BaseModel):
 class MeetingResponse(MeetingBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    project_id: int
+    phase_id: int
     created_by: int | None = None
     created_at: datetime
     updated_at: datetime
     creator: UserBrief | None = None
-    project: ProjectBrief | None = None
+    phase: PhaseBrief | None = None
 
 
 # ---------- Generic ----------

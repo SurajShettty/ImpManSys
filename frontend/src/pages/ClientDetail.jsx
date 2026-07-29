@@ -58,13 +58,13 @@ function toForm(client) {
 export default function ClientDetail() {
   const { id } = useParams()
   const [client, setClient] = useState(null)
-  const [projects, setProjects] = useState([])
+  const [phases, setPhases] = useState([])
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
   const [meetings, setMeetings] = useState([])
   const [expandedMeetings, setExpandedMeetings] = useState({})
 
-  // Project creation
+  // Phase creation
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', type: 'New Implementation', end_date: '' })
   const [saving, setSaving] = useState(false)
@@ -77,12 +77,12 @@ export default function ClientDetail() {
   const load = () => {
     Promise.all([
       api.get(`/clients/${id}`),
-      api.get(`/clients/${id}/projects`),
+      api.get(`/clients/${id}/phases`),
       api.get(`/clients/${id}/meetings`),
     ])
       .then(([c, p, m]) => {
         setClient(c.data)
-        setProjects(p.data)
+        setPhases(p.data)
         setMeetings(m.data)
       })
       .catch(() => setError('Failed to load client'))
@@ -99,12 +99,12 @@ export default function ClientDetail() {
     try {
       const payload = { client_id: Number(id), name: form.name, type: form.type }
       if (form.end_date) payload.end_date = form.end_date
-      await api.post('/projects/', payload)
+      await api.post('/phases/', payload)
       setForm({ name: '', type: 'New Implementation', end_date: '' })
       setShowForm(false)
       load()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create project')
+      setError(err.response?.data?.detail || 'Failed to create phase')
     } finally {
       setSaving(false)
     }
@@ -329,9 +329,9 @@ export default function ClientDetail() {
       )}
 
       <div className="page-header">
-        <h3 style={{ margin: 0 }}>Projects</h3>
+        <h3 style={{ margin: 0 }}>Phases</h3>
         <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
-          {showForm ? 'Cancel' : '+ New Project'}
+          {showForm ? 'Cancel' : '+ New Phase'}
         </button>
       </div>
 
@@ -340,7 +340,7 @@ export default function ClientDetail() {
           <form onSubmit={submit}>
             <div className="form-row">
               <div>
-                <label>Project Name *</label>
+                <label>Phase Name *</label>
                 <input value={form.name} onChange={set('name')} required />
               </div>
               <div>
@@ -356,7 +356,7 @@ export default function ClientDetail() {
             </div>
             <div style={{ marginTop: '0.75rem' }}>
               <button className="btn btn-primary" disabled={saving}>
-                {saving ? 'Saving…' : 'Create Project'}
+                {saving ? 'Saving…' : 'Create Phase'}
               </button>
             </div>
           </form>
@@ -369,16 +369,16 @@ export default function ClientDetail() {
             <tr><th>Name</th><th>Type</th><th>Status</th><th>Progress</th></tr>
           </thead>
           <tbody>
-            {projects.map((p) => (
+            {phases.map((p) => (
               <tr key={p.id}>
-                <td><Link to={`/projects/${p.id}`}>{p.name}</Link></td>
+                <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
                 <td>{p.type}</td>
                 <td><StatusBadge value={p.status} /></td>
                 <td><ProgressBar value={p.progress} /></td>
               </tr>
             ))}
-            {projects.length === 0 && (
-              <tr><td colSpan={4} className="muted" style={{ textAlign: 'center' }}>No projects yet.</td></tr>
+            {phases.length === 0 && (
+              <tr><td colSpan={4} className="muted" style={{ textAlign: 'center' }}>No phases yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -387,7 +387,7 @@ export default function ClientDetail() {
       <div className="card" style={{ marginTop: '1rem' }}>
         <h3 style={{ marginTop: 0 }}>All Meetings & Communication Log</h3>
         {meetings.length === 0 ? (
-          <p className="muted">No meetings recorded across this client's projects.</p>
+          <p className="muted">No meetings recorded across this client's phases.</p>
         ) : (
           <div className="meetings-list">
             {meetings.map((m) => {
@@ -408,9 +408,9 @@ export default function ClientDetail() {
                       <strong className="meeting-title">{m.title}</strong>
                       <span className="muted">{m.meeting_date}</span>
                       {m.participants && <span className="muted">• {m.participants}</span>}
-                      {m.project && (
+                      {m.phase && (
                         <span className="muted">
-                          • <Link to={`/projects/${m.project_id}`}>{m.project.name}</Link>
+                          • <Link to={`/phases/${m.phase_id}`}>{m.phase.name}</Link>
                         </span>
                       )}
                     </div>

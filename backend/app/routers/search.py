@@ -14,10 +14,10 @@ def global_search(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission("search.view")),
 ):
-    """Search clients, projects, tasks, and users from one box."""
+    """Search clients, phases, activities, and users from one box."""
     term = f"%{q.strip()}%"
     if term == "%%":
-        return {"clients": [], "projects": [], "tasks": [], "users": []}
+        return {"clients": [], "phases": [], "activities": [], "users": []}
 
     clients = (
         db.query(models.Client)
@@ -33,31 +33,31 @@ def global_search(
         .all()
     )
 
-    projects = (
-        db.query(models.Project)
+    phases = (
+        db.query(models.Phase)
         .join(models.Client)
         .filter(
-            models.Project.is_deleted == False,
+            models.Phase.is_deleted == False,
             models.Client.is_deleted == False,
-            models.Project.name.ilike(term),
+            models.Phase.name.ilike(term),
         )
         .limit(10)
         .all()
     )
 
-    tasks = (
-        db.query(models.Task)
+    activities = (
+        db.query(models.Activity)
+        .join(models.PhaseModule)
         .join(models.Phase)
-        .join(models.ProjectModule)
-        .join(models.Project)
+        .join(models.Client)
         .filter(
-            models.Task.is_deleted == False,
+            models.Activity.is_deleted == False,
+            models.PhaseModule.is_deleted == False,
             models.Phase.is_deleted == False,
-            models.ProjectModule.is_deleted == False,
-            models.Project.is_deleted == False,
+            models.Client.is_deleted == False,
             or_(
-                models.Task.title.ilike(term),
-                models.Task.description.ilike(term),
+                models.Activity.title.ilike(term),
+                models.Activity.description.ilike(term),
             ),
         )
         .limit(10)
@@ -89,7 +89,7 @@ def global_search(
             }
             for c in clients
         ],
-        "projects": [
+        "phases": [
             {
                 "id": p.id,
                 "name": p.name,
@@ -98,18 +98,18 @@ def global_search(
                 "status": p.status,
                 "progress": p.progress,
             }
-            for p in projects
+            for p in phases
         ],
-        "tasks": [
+        "activities": [
             {
-                "id": t.id,
-                "title": t.title,
-                "status": t.status,
-                "priority": t.priority,
-                "project_id": t.phase.project_module.project_id,
-                "project_name": t.phase.project_module.project.name,
+                "id": a.id,
+                "title": a.title,
+                "status": a.status,
+                "priority": a.priority,
+                "phase_id": a.phase_module.phase_id,
+                "phase_name": a.phase_module.phase.name,
             }
-            for t in tasks
+            for a in activities
         ],
         "users": [
             {

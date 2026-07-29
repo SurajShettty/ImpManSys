@@ -10,14 +10,13 @@ from app.routers import (
     roles,
     health,
     clients,
-    projects,
+    phases,
     modules,
-    tasks,
+    activities,
     dashboard,
     search,
     audit_logs,
     recycle_bin,
-    meetings,
 )
 
 settings = get_settings()
@@ -60,11 +59,10 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(roles.router, prefix="/api/roles", tags=["roles"])
 app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
-app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(phases.router, prefix="/api/phases", tags=["phases"])
 app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
-app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
+app.include_router(activities.router, prefix="/api/activities", tags=["activities"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(audit_logs.router, prefix="/api/audit-logs", tags=["audit-logs"])
 app.include_router(recycle_bin.router, prefix="/api/recycle-bin", tags=["recycle-bin"])
-app.include_router(meetings.router, prefix="/api/projects", tags=["meetings"])

@@ -192,7 +192,7 @@ export default function Clients() {
               <th>Kickoff</th>
               <th>Billing / Go-Live</th>
               <th>Total Users</th>
-              <th>Projects</th>
+              <th>Phases</th>
             </tr>
           </thead>
           <tbody>
@@ -214,7 +214,7 @@ export default function Clients() {
                 <td>{c.kickoff_meeting_date || '—'}</td>
                 <td>{c.billing_date || '—'}</td>
                 <td>{c.total_users ?? '—'}</td>
-                <td>{c.project_count}</td>
+                <td>{c.phase_count}</td>
               </tr>
             ))}
             {filteredClients.length === 0 && (

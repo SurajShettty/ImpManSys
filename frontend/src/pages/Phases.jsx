@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, ProgressBar } from '../components/ui'
 
-const PROJECT_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
-const PROJECT_TYPES = [
+const PHASE_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
+const PHASE_TYPES = [
   'New Implementation',
   'Additional Module',
   'Migration',
@@ -14,8 +14,8 @@ const PROJECT_TYPES = [
   'Custom Development',
 ]
 
-export default function Projects() {
-  const [projects, setProjects] = useState([])
+export default function Phases() {
+  const [phases, setPhases] = useState([])
   const [clients, setClients] = useState([])
   const [error, setError] = useState('')
   const [filters, setFilters] = useState({
@@ -28,12 +28,12 @@ export default function Projects() {
 
   const load = () => {
     setError('')
-    Promise.all([api.get('/projects/'), api.get('/clients/')])
+    Promise.all([api.get('/phases/'), api.get('/clients/')])
       .then(([p, c]) => {
-        setProjects(p.data)
+        setPhases(p.data)
         setClients(c.data)
       })
-      .catch(() => setError('Failed to load projects'))
+      .catch(() => setError('Failed to load phases'))
   }
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function Projects() {
   )
 
   const filtered = useMemo(() => {
-    return projects.filter((p) => {
+    return phases.filter((p) => {
       if (filters.client_id && p.client_id !== Number(filters.client_id)) return false
       if (filters.status && p.status !== filters.status) return false
       if (filters.type && p.type !== filters.type) return false
@@ -54,29 +54,29 @@ export default function Projects() {
       if (filters.to && (!p.end_date || p.end_date > filters.to)) return false
       return true
     })
-  }, [projects, filters])
+  }, [phases, filters])
 
   const set = (k) => (e) => setFilters({ ...filters, [k]: e.target.value })
 
   const clearFilters = () =>
     setFilters({ client_id: '', status: '', type: '', from: '', to: '' })
 
-  const deleteProject = async (project) => {
-    if (!window.confirm(`Delete project "${project.name}"? This cannot be undone.`)) return
+  const deletePhase = async (phase) => {
+    if (!window.confirm(`Delete phase "${phase.name}"? This cannot be undone.`)) return
     setError('')
     try {
-      await api.delete(`/projects/${project.id}`)
+      await api.delete(`/phases/${phase.id}`)
       load()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete project')
+      setError(err.response?.data?.detail || 'Failed to delete phase')
     }
   }
 
   return (
     <div>
       <div className="page-header">
-        <h2>Projects</h2>
-        <span className="muted">Create projects from a client's page</span>
+        <h2>Phases</h2>
+        <span className="muted">Create phases from a client's page</span>
       </div>
 
       <div className="card" style={{ marginBottom: '1rem' }}>
@@ -94,7 +94,7 @@ export default function Projects() {
             <label>Status</label>
             <select value={filters.status} onChange={set('status')}>
               <option value="">All statuses</option>
-              {PROJECT_STATUSES.map((s) => (
+              {PHASE_STATUSES.map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>
@@ -103,7 +103,7 @@ export default function Projects() {
             <label>Type</label>
             <select value={filters.type} onChange={set('type')}>
               <option value="">All types</option>
-              {PROJECT_TYPES.map((t) => (
+              {PHASE_TYPES.map((t) => (
                 <option key={t}>{t}</option>
               ))}
             </select>
@@ -126,7 +126,7 @@ export default function Projects() {
       </div>
 
       {error && <div className="error">{error}</div>}
-      <p className="muted">{filtered.length} of {projects.length} projects</p>
+      <p className="muted">{filtered.length} of {phases.length} phases</p>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="table">
@@ -144,7 +144,7 @@ export default function Projects() {
           <tbody>
             {filtered.map((p) => (
               <tr key={p.id}>
-                <td><Link to={`/projects/${p.id}`}>{p.name}</Link></td>
+                <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
                 <td>{clientMap[p.client_id] || '—'}</td>
                 <td>{p.type}</td>
                 <td><StatusBadge value={p.status} /></td>
@@ -152,7 +152,7 @@ export default function Projects() {
                 <td>{p.end_date || '—'}</td>
                 <td>
                   <div className="actions" style={{ justifyContent: 'flex-end' }}>
-                    <button className="btn btn-danger btn-sm" onClick={() => deleteProject(p)}>
+                    <button className="btn btn-danger btn-sm" onClick={() => deletePhase(p)}>
                       Delete
                     </button>
                   </div>
@@ -160,7 +160,7 @@ export default function Projects() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>No projects match these filters.</td></tr>
+              <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>No phases match these filters.</td></tr>
             )}
           </tbody>
         </table>

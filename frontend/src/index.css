@@ -538,7 +538,7 @@ body.dark .form-row select:focus {
   transition: width 0.3s ease;
 }
 
-/* Accordion (module -> phases) */
+/* Accordion (phase -> modules) */
 .accordion-header {
   display: flex;
   justify-content: space-between;
@@ -563,7 +563,8 @@ body.dark .form-row select:focus {
   background: var(--bg-card);
 }
 
-.phase-block {
+.phase-block,
+.module-block {
   margin-top: 1rem;
 }
 
@@ -612,7 +613,7 @@ body.dark .form-row select:focus {
   outline-offset: -1px;
 }
 
-/* Overdue task highlighting */
+/* Overdue activity highlighting */
 .task-overdue {
   background: rgba(220, 53, 69, 0.06);
 }
@@ -742,7 +743,7 @@ body.dark .filter-group select {
   color: var(--badge-grey-text);
 }
 
-/* Add-module control on project page */
+/* Add-module control on phase page */
 .add-module-control {
   display: flex;
   gap: 0.5rem;

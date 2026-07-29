@@ -90,8 +90,8 @@ export default function RecycleBin() {
   const empty =
     bin &&
     bin.clients.length === 0 &&
-    bin.projects.length === 0 &&
-    bin.tasks.length === 0 &&
+    bin.phases.length === 0 &&
+    bin.activities.length === 0 &&
     bin.users.length === 0 &&
     bin.meetings.length === 0
 
@@ -122,9 +122,9 @@ export default function RecycleBin() {
             )}
           />
           <Section
-            title="Projects"
-            entity="projects"
-            items={bin.projects}
+            title="Phases"
+            entity="phases"
+            items={bin.phases}
             restoring={restoring}
             onRestore={restore}
             now={now}
@@ -141,16 +141,16 @@ export default function RecycleBin() {
             )}
           />
           <Section
-            title="Tasks"
-            entity="tasks"
-            items={bin.tasks}
+            title="Activities"
+            entity="activities"
+            items={bin.activities}
             restoring={restoring}
             onRestore={restore}
             now={now}
-            render={(t) => (
+            render={(a) => (
               <>
-                <strong>{t.title}</strong>
-                <span className="muted"> · {t.project_name}</span>
+                <strong>{a.title}</strong>
+                <span className="muted"> · {a.phase_name}</span>
               </>
             )}
           />
@@ -178,7 +178,7 @@ export default function RecycleBin() {
             render={(m) => (
               <>
                 <strong>{m.title}</strong>
-                <span className="muted"> · {m.project_name || 'Project unavailable'}</span>
+                <span className="muted"> · {m.phase_name || 'Phase unavailable'}</span>
               </>
             )}
           />

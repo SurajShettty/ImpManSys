@@ -2,7 +2,7 @@ import React from 'react'
 
 // Map a status string to a RAG-style badge colour.
 const STATUS_COLOURS = {
-  // Generic / project / module
+  // Generic / phase / module
   'Not Started': 'grey',
   'In Progress': 'blue',
   'On Hold': 'amber',
@@ -11,7 +11,7 @@ const STATUS_COLOURS = {
   // Client
   'Active': 'green',
   'Churned': 'red',
-  // Task-specific
+  // Activity-specific
   'Waiting for Client': 'amber',
   'Waiting for Internal Team': 'amber',
   'Blocked': 'red',

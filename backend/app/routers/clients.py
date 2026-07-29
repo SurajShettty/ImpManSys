@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 def _with_counts(client: models.Client) -> models.Client:
-    client.project_count = len([p for p in client.projects if not p.is_deleted])
+    client.phase_count = len([p for p in client.phases if not p.is_deleted])
     return client
 
 
@@ -81,21 +81,21 @@ def delete_client(
     now = models.utc_now()
     client.is_deleted = True
     client.deleted_at = now
-    for project in client.projects:
-        project.is_deleted = True
-        project.deleted_at = now
-        for project_module in project.project_modules:
-            project_module.is_deleted = True
-            project_module.deleted_at = now
-            for phase in project_module.phases:
-                phase.is_deleted = True
-                phase.deleted_at = now
-                for task in phase.tasks:
-                    task.is_deleted = True
-                    task.deleted_at = now
-                    for item in task.checklist_items:
-                        item.is_deleted = True
-                        item.deleted_at = now
+    for phase in client.phases:
+        phase.is_deleted = True
+        phase.deleted_at = now
+        for meeting in phase.meetings:
+            meeting.is_deleted = True
+            meeting.deleted_at = now
+        for phase_module in phase.phase_modules:
+            phase_module.is_deleted = True
+            phase_module.deleted_at = now
+            for activity in phase_module.activities:
+                activity.is_deleted = True
+                activity.deleted_at = now
+                for item in activity.checklist_items:
+                    item.is_deleted = True
+                    item.deleted_at = now
 
     db.commit()
     log_activity(db, current_user.id, "client", "delete", f"Deleted client #{client_id}")
@@ -107,19 +107,19 @@ def list_client_meetings(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    """All meetings across all projects for this client."""
+    """All meetings across all phases for this client."""
     client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    project_ids = [p.id for p in client.projects if not p.is_deleted]
-    if not project_ids:
+    phase_ids = [p.id for p in client.phases if not p.is_deleted]
+    if not phase_ids:
         return []
 
     return (
         db.query(models.Meeting)
         .filter(
-            models.Meeting.project_id.in_(project_ids),
+            models.Meeting.phase_id.in_(phase_ids),
             models.Meeting.is_deleted == False,
         )
         .order_by(models.Meeting.meeting_date.desc(), models.Meeting.created_at.desc())
@@ -127,8 +127,8 @@ def list_client_meetings(
     )
 
 
-@router.get("/{client_id}/projects", response_model=List[schemas.ProjectResponse])
-def list_client_projects(
+@router.get("/{client_id}/phases", response_model=List[schemas.PhaseResponse])
+def list_client_phases(
     client_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
@@ -137,8 +137,8 @@ def list_client_projects(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     return (
-        db.query(models.Project)
-        .filter(models.Project.client_id == client_id, models.Project.is_deleted == False)
-        .order_by(models.Project.created_at.desc())
+        db.query(models.Phase)
+        .filter(models.Phase.client_id == client_id, models.Phase.is_deleted == False)
+        .order_by(models.Phase.created_at.desc())
         .all()
     )

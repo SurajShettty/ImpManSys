@@ -11,7 +11,7 @@ export default function SearchResults() {
 
   useEffect(() => {
     if (!q.trim()) {
-      setResults({ clients: [], projects: [], tasks: [], users: [] })
+      setResults({ clients: [], phases: [], activities: [], users: [] })
       return
     }
     setLoading(true)
@@ -25,8 +25,8 @@ export default function SearchResults() {
 
   const total =
     (results?.clients?.length || 0) +
-    (results?.projects?.length || 0) +
-    (results?.tasks?.length || 0) +
+    (results?.phases?.length || 0) +
+    (results?.activities?.length || 0) +
     (results?.users?.length || 0)
 
   return (
@@ -39,7 +39,7 @@ export default function SearchResults() {
           {loading ? 'Searching…' : `${total} result${total === 1 ? '' : 's'} for “${q}”`}
         </p>
       ) : (
-        <p className="muted">Type in the search box above to find clients, projects, tasks, and users.</p>
+        <p className="muted">Type in the search box above to find clients, phases, activities, and users.</p>
       )}
       {error && <div className="error">{error}</div>}
 
@@ -56,12 +56,12 @@ export default function SearchResults() {
         </div>
       )}
 
-      {results && results.projects.length > 0 && (
+      {results && results.phases.length > 0 && (
         <div className="card" style={{ marginBottom: '1rem' }}>
-          <h3 style={{ marginTop: 0 }}>Projects</h3>
-          {results.projects.map((p) => (
+          <h3 style={{ marginTop: 0 }}>Phases</h3>
+          {results.phases.map((p) => (
             <p key={p.id} style={{ margin: '0.35rem 0' }}>
-              <Link to={`/projects/${p.id}`}>{p.name}</Link>
+              <Link to={`/phases/${p.id}`}>{p.name}</Link>
               {p.client_name && <span className="muted"> · {p.client_name}</span>}
               <span className="muted"> · {p.progress}%</span>
             </p>
@@ -69,13 +69,13 @@ export default function SearchResults() {
         </div>
       )}
 
-      {results && results.tasks.length > 0 && (
+      {results && results.activities.length > 0 && (
         <div className="card" style={{ marginBottom: '1rem' }}>
-          <h3 style={{ marginTop: 0 }}>Tasks</h3>
-          {results.tasks.map((t) => (
-            <p key={t.id} style={{ margin: '0.35rem 0' }}>
-              <Link to={`/projects/${t.project_id}`}>{t.title}</Link>
-              <span className="muted"> · {t.project_name} · {t.status} · {t.priority}</span>
+          <h3 style={{ marginTop: 0 }}>Activities</h3>
+          {results.activities.map((a) => (
+            <p key={a.id} style={{ margin: '0.35rem 0' }}>
+              <Link to={`/phases/${a.phase_id}`}>{a.title}</Link>
+              <span className="muted"> · {a.phase_name} · {a.status} · {a.priority}</span>
             </p>
           ))}
         </div>

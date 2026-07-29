@@ -1,125 +1,259 @@
 """Implementation template generation and progress roll-up.
 
-The standard module implementation template mirrors
-docs/Implementation_Management_System_SOP.md section 6.
+The module template catalogue maps each predefined module to the activities that
+should be auto-created when the module is added to a phase. The default Kickoff
+module is created automatically for every new phase.
 """
 from sqlalchemy.orm import Session
 from app import models
 
-# Section 6 - Standard Module Implementation Template.
-# Each phase maps to its default set of tasks.
-STANDARD_TEMPLATE: list[tuple[str, list[str]]] = [
-    ("Kickoff", [
+# Module name -> ordered list of default activities. Module names are taken
+# from the implementation sheet supplied by the product team.
+MODULE_ACTIVITY_TEMPLATES: dict[str, list[str]] = {
+    "Kickoff": [
         "Requirement Gathering",
         "Stakeholder Identification",
         "Scope Confirmation",
         "Timeline Approval",
-    ]),
-    ("Configuration", [
-        "System Configuration",
-        "User Roles",
-        "Permissions",
-        "Academic Setup",
-    ]),
-    ("Data Preparation", [
-        "Student Import",
-        "Faculty Import",
-        "Programme Mapping",
-        "Timetable Upload",
-    ]),
-    ("Testing", [
-        "Functional Testing",
-        "UAT",
-        "Issue Resolution",
-    ]),
-    ("Training", [
-        "Admin Training",
-        "Faculty Training",
-        "Student Orientation",
-    ]),
-    ("Go-Live", [
-        "Production Enablement",
-        "Monitoring",
-    ]),
-    ("Hypercare", [
-        "Daily Monitoring",
-        "Bug Fixes",
-        "Client Support",
-    ]),
-]
+    ],
+    "Master data Managament": [
+        "Receiving details for Instance Configuration",
+        "Configuration of Instance",
+        "Receiving Department, Program and Course data",
+        "Demo and Configuration of Department, program and Course data",
+        "Receiving data of Faculty members and Staff",
+        "Demo and Configuration of Faculty members and Staff data",
+        "Demo and traning for Term Creation",
+    ],
+    "Admission Mangagement": [
+        "Business Process Mapping",
+        "Kick off meeting with CRM",
+        "Sharing API for integration",
+        "Defining Trigger Point to transfer data to CollPoll",
+        "Share Admission Form details to CollPoll",
+        "Configuration of Admission form on CollPoll as per form configured on NPF",
+        "Testing of integration",
+        "Demo and Training",
+        "Discussion on the format of Registration iD",
+        "Receiving registration ID format from the Partner",
+        "Configuration of Registration No.",
+        "Demo and Training",
+        "Integration with ID Card printing device/PDF of student ID card",
+        "Go-Live support",
+    ],
+    "Finance Managament": [
+        "Business Process Mapping",
+        "Kick off meeting withfor the gateway",
+        "Receiving payment gateway details",
+        "Integration with payment gateway",
+        "Penny test",
+        "Demo and training with Implementation of finance module",
+        "Implementation of penalty",
+        "Implementation of Scholarship",
+        "Implementation of Installments",
+        "Implementation of Dues",
+        "Going live with finance module",
+    ],
+    "Infrastructure Management": [
+        "Receiving Infrastructure Data",
+        "Infrastructure Configuration",
+        "Demo and Training",
+        "Data to be configured for all venues",
+        "Demo and Training for Venue booking",
+    ],
+    "Institutional Calendar": [
+        "Demo of the functionality",
+    ],
+    "Academic Management System": [
+        "Business Process Mapping",
+        "Curriculum/Learning Pathway Management",
+        "Outcome-Based Education",
+        "Choice-based Credit System",
+        "Time-table Management",
+        "Attendance Management",
+    ],
+    "Feedback Management": [
+        "Demo and Training of the functionality",
+        "Template configuration",
+        "Report and Analytics",
+    ],
+    "Examination Management System": [
+        "Business Process Mapping",
+        "Demo and Training of the functionality",
+        "List of assesments and component to be configured",
+        "CWA generation",
+        "Demo and Training of the functionality",
+        "Exam Schema Creation",
+        "Grading Schema Creation",
+        "Demo and Training of the functionality",
+        "Exam Enrollment and Registration",
+        "Hall Ticket Generation",
+        "Demo and Training of the functionality",
+        "Seating Arrangement",
+        "Question Paper Configuration",
+        "Answer Sheet Masking",
+        "Exam Attendance Sheet",
+        "Invigilator Mapping",
+        "Demo and Training of the functionality",
+        "Demo and Training of the functionality",
+        "Demo and Training of the functionality",
+    ],
+    "Learning Managment System": [
+        "Syllabus and Session Planning",
+        "Resource Upload",
+        "Quiz, Assignment and Discussion Forum",
+        "Analytics and Gradebook",
+    ],
+    "Hostel Managament": [
+        "Demo and Training of the module",
+        "Hostel Allotment",
+        "Go-Live support",
+    ],
+    "Placement and Internship": [
+        "Demo and Training of the functionality",
+        "Setting up Basic configurations (Registration required, Placement cycle, placement type)",
+        "Bulk registration of students / registration by students",
+    ],
+    "Transportation Management": [
+        "Demo and Training of the functionality",
+        "Transport Fee Setup - Pickup point wise",
+        "Route & Pickpoint selection option",
+    ],
+    "Member Records (student, faculty,staff,parent)": [
+        "Admin Records",
+        "E-Portfolio",
+        "User Management",
+        "Role Based Privilege Management",
+    ],
+    "Campus Help Center": [
+        "Demo of the functionality",
+        "Demo of Workflow Configuration format",
+        "Configuring Workflow",
+    ],
+    "HR Management": [
+        "Biometric Integration",
+        "Attendance Management",
+        "Leave Management",
+    ],
+    "Booth Mangmeent": [
+        "Feed",
+    ],
+    "Koha": [
+        "Integration",
+    ],
+}
 
-# A completed task contributes 100%; anything else contributes its own progress.
+
+# A completed activity contributes 100%; anything else contributes its own progress.
 COMPLETED_STATUS = "Completed"
 
 
-def generate_module_plan(db: Session, project_module: models.ProjectModule) -> None:
-    """Create the standard phases and tasks for a freshly-added project module.
+def _ensure_module(db: Session, name: str, category: str | None = None) -> models.Module:
+    """Return the master-catalogue module, creating it if it does not exist."""
+    module = db.query(models.Module).filter(models.Module.name == name, models.Module.is_deleted == False).first()
+    if not module:
+        module = models.Module(name=name, category=category)
+        db.add(module)
+        db.flush()
+    return module
 
-    Objects are added to the session but not committed; the caller commits.
-    """
-    for sequence, (phase_name, task_titles) in enumerate(STANDARD_TEMPLATE, start=1):
-        phase = models.Phase(
-            project_module=project_module,
-            name=phase_name,
-            sequence=sequence,
+
+def _create_phase_module_with_activities(
+    db: Session, phase: models.Phase, module_name: str, category: str | None = None
+) -> models.PhaseModule:
+    """Create a phase module instance and generate its default activities."""
+    module = _ensure_module(db, module_name, category)
+    phase_module = models.PhaseModule(phase=phase, module=module)
+    db.add(phase_module)
+    db.flush()
+    _generate_activities_for_module(db, phase_module)
+    return phase_module
+
+
+def _generate_activities_for_module(db: Session, phase_module: models.PhaseModule) -> None:
+    """Create default activities for a module instance based on its template."""
+    module_name = phase_module.module.name
+    titles = MODULE_ACTIVITY_TEMPLATES.get(module_name, [])
+    for seq, title in enumerate(titles, start=1):
+        db.add(
+            models.Activity(
+                phase_module=phase_module,
+                title=title,
+                sequence=seq,
+            )
         )
-        db.add(phase)
-        for task_seq, title in enumerate(task_titles, start=1):
-            db.add(models.Task(phase=phase, title=title, sequence=task_seq))
+    db.flush()
 
 
-def _task_progress(task: models.Task) -> float:
-    if task.status == COMPLETED_STATUS:
+def create_default_kickoff_module(db: Session, phase: models.Phase) -> None:
+    """Every phase gets a Kickoff module with the standard onboarding activities."""
+    _create_phase_module_with_activities(db, phase, "Kickoff", "Onboarding")
+
+
+def add_module_to_phase(
+    db: Session, phase: models.Phase, module: models.Module
+) -> models.PhaseModule:
+    """Add a selected module to a phase and generate its default activities."""
+    phase_module = models.PhaseModule(phase=phase, module=module)
+    db.add(phase_module)
+    db.flush()
+    _generate_activities_for_module(db, phase_module)
+    recompute_phase_module_progress(db, phase_module)
+    recompute_phase_progress(db, phase)
+    return phase_module
+
+
+def _activity_progress(activity: models.Activity) -> float:
+    if activity.status == COMPLETED_STATUS:
         return 100.0
-    return task.progress or 0.0
+    return activity.progress or 0.0
 
 
-def recompute_project_module_progress(
-    db: Session, project_module: models.ProjectModule
+def recompute_phase_module_progress(
+    db: Session, phase_module: models.PhaseModule
 ) -> None:
-    """Roll task progress up to the project module, then to the project.
+    """Roll activity progress up to the module, then to the parent phase.
 
-    Cancelled tasks are excluded from the overall progress calculation.
+    Cancelled activities are excluded from the overall progress calculation.
     """
-    tasks = [
-        t
-        for phase in project_module.phases
-        for t in phase.tasks
-        if t.status != "Cancelled" and not t.is_deleted
+    activities = [
+        a
+        for a in phase_module.activities
+        if a.status != "Cancelled" and not a.is_deleted
     ]
-    if tasks:
-        project_module.progress = round(
-            sum(_task_progress(t) for t in tasks) / len(tasks), 2
+    if activities:
+        phase_module.progress = round(
+            sum(_activity_progress(a) for a in activities) / len(activities), 2
         )
     else:
-        project_module.progress = 0.0
+        phase_module.progress = 0.0
 
-    if project_module.progress >= 100:
-        project_module.status = "Completed"
-    elif project_module.progress > 0:
-        project_module.status = "In Progress"
+    if phase_module.progress >= 100:
+        phase_module.status = "Completed"
+    elif phase_module.progress > 0:
+        phase_module.status = "In Progress"
     else:
-        project_module.status = "Not Started"
+        phase_module.status = "Not Started"
 
-    recompute_project_progress(db, project_module.project)
+    recompute_phase_progress(db, phase_module.phase)
 
 
-def recompute_project_progress(db: Session, project: models.Project) -> None:
-    """Average module progress into the parent project's progress and status."""
-    modules = [m for m in project.project_modules if not m.is_deleted]
+def recompute_phase_progress(db: Session, phase: models.Phase) -> None:
+    """Average module progress into the parent phase's progress and status."""
+    modules = [m for m in phase.phase_modules if not m.is_deleted]
     if modules:
-        project.progress = round(
+        phase.progress = round(
             sum(m.progress or 0.0 for m in modules) / len(modules), 2
         )
     else:
-        project.progress = 0.0
+        phase.progress = 0.0
 
     # Derive status from progress, mirroring module behaviour. "On Hold" and
     # "Cancelled" are manual overrides, so don't stomp them automatically.
-    if project.status not in ("On Hold", "Cancelled"):
-        if project.progress >= 100:
-            project.status = "Completed"
-        elif project.progress > 0:
-            project.status = "In Progress"
+    if phase.status not in ("On Hold", "Cancelled"):
+        if phase.progress >= 100:
+            phase.status = "Completed"
+        elif phase.progress > 0:
+            phase.status = "In Progress"
         else:
-            project.status = "Not Started"
+            phase.status = "Not Started"

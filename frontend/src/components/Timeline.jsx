@@ -1,32 +1,32 @@
 import React from 'react'
 
-// Compute per-phase progress from its tasks (mirrors backend roll-up rules).
-export function phaseProgress(phase) {
-  const tasks = (phase.tasks || []).filter((t) => t.status !== 'Cancelled')
-  if (tasks.length === 0) return 0
-  const sum = tasks.reduce((acc, t) => acc + (t.status === 'Completed' ? 100 : t.progress || 0), 0)
-  return Math.round((sum / tasks.length) * 100) / 100
+// Compute per-module progress from its activities (mirrors backend roll-up rules).
+export function moduleProgress(module) {
+  const activities = (module.activities || []).filter((a) => a.status !== 'Cancelled')
+  if (activities.length === 0) return 0
+  const sum = activities.reduce((acc, a) => acc + (a.status === 'Completed' ? 100 : a.progress || 0), 0)
+  return Math.round((sum / activities.length) * 100) / 100
 }
 
-// Segmented bar: one segment per phase, width = phase completion %.
-export function PhaseTimeline({ phases }) {
-  if (!phases || phases.length === 0) return null
-  const segments = phases
+// Segmented bar: one segment per module, width = module completion %.
+export function ModuleTimeline({ modules }) {
+  if (!modules || modules.length === 0) return null
+  const segments = modules
     .slice()
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((phase) => ({ phase, pct: phaseProgress(phase) }))
+    .sort((a, b) => a.id - b.id)
+    .map((module) => ({ module, pct: moduleProgress(module) }))
 
   return (
     <div className="phase-timeline">
       <div className="phase-timeline-bar">
-        {segments.map(({ phase, pct }) => (
+        {segments.map(({ module, pct }) => (
           <div
-            key={phase.id}
+            key={module.id}
             className={`phase-timeline-segment ${pct >= 50 ? 'filled' : ''}`}
-            title={`${phase.name}: ${pct}%`}
+            title={`${module.module?.name}: ${pct}%`}
           >
             <div className="phase-timeline-fill" style={{ height: `${pct}%` }} />
-            <span className="phase-timeline-label">{phase.name}</span>
+            <span className="phase-timeline-label">{module.module?.name}</span>
             <span className="phase-timeline-pct">{pct}%</span>
           </div>
         ))}
@@ -35,36 +35,34 @@ export function PhaseTimeline({ phases }) {
   )
 }
 
-// Simple Gantt: one row per phase, bars positioned by task start/due dates.
-export function GanttTimeline({ projectModules, projectStart, projectEnd }) {
-  // Collect dated tasks across all modules/phases.
+// Simple Gantt: one row per module, bars positioned by activity start/due dates.
+export function GanttTimeline({ modules, phaseStart, phaseEnd }) {
+  // Collect dated activities across all modules.
   const rows = []
-  for (const pm of projectModules || []) {
-    for (const phase of pm.phases || []) {
-      const tasks = (phase.tasks || []).filter((t) => t.start_date || t.due_date)
-      if (tasks.length === 0) continue
-      rows.push({
-        key: `${pm.id}-${phase.id}`,
-        label: `${pm.module?.name || 'Module'} — ${phase.name}`,
-        tasks,
-      })
-    }
+  for (const module of modules || []) {
+    const activities = (module.activities || []).filter((a) => a.start_date || a.due_date)
+    if (activities.length === 0) continue
+    rows.push({
+      key: module.id,
+      label: module.module?.name || 'Module',
+      activities,
+    })
   }
 
   if (rows.length === 0) {
-    return <p className="muted">No dated tasks yet. Add start/due dates to tasks to see the timeline.</p>
+    return <p className="muted">No dated activities yet. Add start/due dates to activities to see the timeline.</p>
   }
 
   // Determine the date range.
   let dates = []
   for (const row of rows) {
-    for (const t of row.tasks) {
-      if (t.start_date) dates.push(t.start_date)
-      if (t.due_date) dates.push(t.due_date)
+    for (const a of row.activities) {
+      if (a.start_date) dates.push(a.start_date)
+      if (a.due_date) dates.push(a.due_date)
     }
   }
-  const minDate = projectStart && projectStart < dates[0] ? projectStart : dates.reduce((a, b) => (a < b ? a : b))
-  const maxDate = projectEnd && projectEnd > dates[dates.length - 1] ? projectEnd : dates.reduce((a, b) => (a > b ? a : b))
+  const minDate = phaseStart && phaseStart < dates[0] ? phaseStart : dates.reduce((a, b) => (a < b ? a : b))
+  const maxDate = phaseEnd && phaseEnd > dates[dates.length - 1] ? phaseEnd : dates.reduce((a, b) => (a > b ? a : b))
 
   const toTime = (d) => new Date(d + 'T00:00:00').getTime()
   const min = toTime(minDate)
@@ -104,17 +102,17 @@ export function GanttTimeline({ projectModules, projectStart, projectEnd }) {
         <div className="gantt-row" key={row.key}>
           <div className="gantt-row-label" title={row.label}>{row.label}</div>
           <div className="gantt-row-track">
-            {row.tasks.map((t) => {
-              const start = t.start_date || t.due_date
-              const end = t.due_date || t.start_date
+            {row.activities.map((a) => {
+              const start = a.start_date || a.due_date
+              const end = a.due_date || a.start_date
               return (
                 <div
-                  key={t.id}
-                  className={`gantt-bar gantt-bar-${(t.status || 'Not Started').toLowerCase().replace(/ /g, '-')}`}
+                  key={a.id}
+                  className={`gantt-bar gantt-bar-${(a.status || 'Not Started').toLowerCase().replace(/ /g, '-')}`}
                   style={{ left: left(start), width: width(start, end) }}
-                  title={`${t.title} · ${start} → ${end} · ${t.status}`}
+                  title={`${a.title} · ${start} → ${end} · ${a.status}`}
                 >
-                  {t.title}
+                  {a.title}
                 </div>
               )
             })}
