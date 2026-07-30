@@ -1,6 +1,116 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import api from '../api/client'
+
+const NOTIFICATION_TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue' }
+const NOTIFICATION_TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned' }
+const NOTIFICATION_POLL_MS = 60000
+
+function NotificationBell() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const ref = useRef(null)
+
+  const load = () => {
+    api
+      .get('/notifications/', { params: { page: 1, page_size: 10 } })
+      .then((res) => {
+        setNotifications(res.data.items || [])
+        setUnreadCount(res.data.unread_count || 0)
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, NOTIFICATION_POLL_MS)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    setOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  const openNotification = async (n) => {
+    setOpen(false)
+    if (!n.is_read) {
+      try {
+        await api.post(`/notifications/${n.id}/read`)
+        load()
+      } catch {
+        // ignore - navigation still proceeds
+      }
+    }
+    if (n.phase_id) navigate(`/phases/${n.phase_id}`)
+  }
+
+  const markAllRead = async () => {
+    try {
+      await api.post('/notifications/read-all')
+      load()
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div ref={ref} className={`nav-dropdown ${open ? 'open' : ''}`}>
+      <button
+        type="button"
+        className="notification-bell"
+        onClick={() => setOpen((s) => !s)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+        title="Notifications"
+      >
+        🔔
+        {unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+      </button>
+      {open && (
+        <div className="nav-dropdown-menu notification-panel">
+          {notifications.length === 0 && <p className="muted notification-empty">No notifications.</p>}
+          {notifications.map((n) => (
+            <button
+              type="button"
+              key={n.id}
+              className={`notification-item ${n.is_read ? '' : 'unread'}`}
+              onClick={() => openNotification(n)}
+            >
+              <span className={`badge badge-${NOTIFICATION_TYPE_COLOURS[n.type] || 'grey'}`}>
+                {NOTIFICATION_TYPE_LABELS[n.type] || n.type}
+              </span>
+              <span className="notification-message">{n.message}</span>
+              {n.client_name && <span className="notification-client muted">{n.client_name}</span>}
+            </button>
+          ))}
+          <div className="notification-footer">
+            <button type="button" className="btn btn-light btn-sm" onClick={markAllRead} disabled={unreadCount === 0}>
+              Mark all read
+            </button>
+            <NavLink to="/notifications" className="nav-link" onClick={() => setOpen(false)}>
+              View all
+            </NavLink>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function AdminDropdown({ user }) {
   const [open, setOpen] = useState(false)
@@ -123,6 +233,7 @@ export default function Layout() {
               aria-label="Global search"
             />
           </form>
+          <NotificationBell />
           <button
             className="theme-toggle"
             onClick={toggleDarkMode}

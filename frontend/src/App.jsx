@@ -8,6 +8,7 @@ import Phases from './pages/Phases'
 import PhaseDetail from './pages/PhaseDetail'
 import Users from './pages/Users'
 import SearchResults from './pages/SearchResults'
+import Notifications from './pages/Notifications'
 import AuditLogs from './pages/AuditLogs'
 import RecycleBin from './pages/RecycleBin'
 import RolePermissions from './pages/RolePermissions'
@@ -33,6 +34,7 @@ function App() {
         <Route path="/phases" element={<Phases />} />
         <Route path="/phases/:id" element={<PhaseDetail />} />
         <Route path="/search" element={<SearchResults />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route
           path="/users"
           element={

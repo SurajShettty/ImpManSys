@@ -9,6 +9,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -81,6 +82,33 @@ class ActivityLog(Base):
     details = Column(Text, nullable=True)
 
     user = relationship("User")
+
+
+class Notification(Base):
+    """A personal alert for an activity owner: due today, overdue, or assigned.
+
+    Due-today/overdue rows are time-derived, so they're upserted/resolved by
+    services.notifications.sync_due_notifications() on every read rather than
+    on a schedule (this app has no background job runner). Assigned rows are
+    event-derived and created directly when an activity's owner changes.
+    """
+
+    __tablename__ = "notifications"
+    __table_args__ = (
+        UniqueConstraint("user_id", "activity_id", "type", name="uq_notification_user_activity_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=False, index=True)
+    type = Column(String(20), nullable=False)  # due_today / overdue / assigned
+    message = Column(String(255), nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    read_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    activity = relationship("Activity", foreign_keys=[activity_id])
 
 
 # ---------------------------------------------------------------------------

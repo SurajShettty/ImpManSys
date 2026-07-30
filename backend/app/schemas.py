@@ -112,6 +112,20 @@ class ActivityLogResponse(ActivityLogCreate):
     timestamp: datetime
 
 
+# ---------- Notification ----------
+class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    activity_id: int
+    type: str
+    message: str
+    is_read: bool
+    created_at: datetime
+    read_at: datetime | None = None
+    phase_id: int | None = None
+    client_name: str | None = None
+
+
 # ---------- Reusable mini user ----------
 class UserBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)

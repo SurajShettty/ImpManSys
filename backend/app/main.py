@@ -17,6 +17,7 @@ from app.routers import (
     search,
     audit_logs,
     recycle_bin,
+    notifications,
 )
 
 settings = get_settings()
@@ -66,3 +67,4 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"]
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(audit_logs.router, prefix="/api/audit-logs", tags=["audit-logs"])
 app.include_router(recycle_bin.router, prefix="/api/recycle-bin", tags=["recycle-bin"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])

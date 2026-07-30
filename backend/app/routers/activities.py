@@ -6,6 +6,7 @@ from app import models, schemas
 from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 from app.services.templates import recompute_phase_module_progress
+from app.services.notifications import notify_assignment
 
 router = APIRouter()
 
@@ -60,6 +61,8 @@ def create_activity(
     db.refresh(activity)
     _roll_up(db, activity)
     db.commit()
+    if activity.owner_id and activity.owner_id != current_user.id:
+        notify_assignment(db, activity)
     log_activity(db, current_user.id, "activity", "create", f"Created activity '{activity.title}'")
     return activity
 
@@ -73,6 +76,7 @@ def update_activity(
 ):
     activity = _load_activity(db, activity_id)
     data = payload.model_dump(exclude_unset=True)
+    previous_owner_id = activity.owner_id
 
     # Keep progress consistent with a status change. Completed = 100%.
     # Re-opening a completed activity resets progress unless the caller explicitly
@@ -94,6 +98,13 @@ def update_activity(
     db.refresh(activity)
     _roll_up(db, activity)
     db.commit()
+    if (
+        "owner_id" in data
+        and activity.owner_id
+        and activity.owner_id != previous_owner_id
+        and activity.owner_id != current_user.id
+    ):
+        notify_assignment(db, activity)
     log_activity(db, current_user.id, "activity", "update", f"Updated activity '{activity.title}'")
     return activity
 
