@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -14,16 +15,41 @@ from app.services.templates import (
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.PhaseResponse])
+@router.get("/")
 def list_phases(
     client_id: int | None = None,
+    status_: str | None = Query(default=None, alias="status"),
+    type_: str | None = Query(default=None, alias="type"),
+    start_from: date | None = None,
+    end_by: date | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission("phase.view")),
 ):
     query = db.query(models.Phase).filter(models.Phase.is_deleted == False)
     if client_id is not None:
         query = query.filter(models.Phase.client_id == client_id)
-    return query.order_by(models.Phase.created_at.desc()).all()
+    if status_:
+        query = query.filter(models.Phase.status == status_)
+    if type_:
+        query = query.filter(models.Phase.type == type_)
+    if start_from:
+        query = query.filter(models.Phase.start_date >= start_from)
+    if end_by:
+        query = query.filter(models.Phase.end_date <= end_by)
+    query = query.order_by(models.Phase.created_at.desc())
+
+    total = query.count()
+    phases = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "items": [schemas.PhaseResponse.model_validate(p).model_dump() for p in phases],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": (total + page_size - 1) // page_size if total else 1,
+    }
 
 
 @router.post("/", response_model=schemas.PhaseResponse, status_code=status.HTTP_201_CREATED)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -14,13 +14,38 @@ def _with_counts(client: models.Client) -> models.Client:
     return client
 
 
-@router.get("/", response_model=List[schemas.ClientResponse])
+@router.get("/")
 def list_clients(
+    region: str | None = None,
+    status_: str | None = Query(default=None, alias="status"),
+    implementation_state: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ):
-    clients = db.query(models.Client).filter(models.Client.is_deleted == False).order_by(models.Client.name).all()
-    return [_with_counts(c) for c in clients]
+    query = db.query(models.Client).filter(models.Client.is_deleted == False)
+    if region:
+        query = query.filter(models.Client.region == region)
+    if status_:
+        query = query.filter(models.Client.status == status_)
+    if implementation_state:
+        query = query.filter(models.Client.implementation_state == implementation_state)
+    query = query.order_by(models.Client.name)
+
+    total = query.count()
+    clients = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "items": [
+            schemas.ClientResponse.model_validate(_with_counts(c)).model_dump()
+            for c in clients
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": (total + page_size - 1) // page_size if total else 1,
+    }
 
 
 @router.post("/", response_model=schemas.ClientResponse, status_code=status.HTTP_201_CREATED)

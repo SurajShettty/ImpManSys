@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/client'
-import { StatusBadge, ProgressBar } from '../components/ui'
+import { StatusBadge, ProgressBar, Pagination, pageRangeText } from '../components/ui'
 
+const PAGE_SIZE = 20
 const PHASE_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
 const PHASE_TYPES = [
   'New Implementation',
@@ -25,36 +26,47 @@ export default function Phases() {
     from: '',
     to: '',
   })
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [pages, setPages] = useState(1)
 
   const load = () => {
     setError('')
-    Promise.all([api.get('/phases/'), api.get('/clients/')])
-      .then(([p, c]) => {
-        setPhases(p.data)
-        setClients(c.data)
+    const params = { page, page_size: PAGE_SIZE }
+    if (filters.client_id) params.client_id = filters.client_id
+    if (filters.status) params.status = filters.status
+    if (filters.type) params.type = filters.type
+    if (filters.from) params.start_from = filters.from
+    if (filters.to) params.end_by = filters.to
+    api
+      .get('/phases/', { params })
+      .then((res) => {
+        setPhases(res.data.items || [])
+        setTotal(res.data.total || 0)
+        setPages(res.data.pages || 1)
       })
       .catch(() => setError('Failed to load phases'))
   }
 
+  useEffect(load, [filters, page])
+
+  // Reset to page 1 whenever the filters change.
   useEffect(() => {
-    load()
+    setPage(1)
+  }, [filters])
+
+  // The client filter dropdown needs every client, independent of the phase list's pagination.
+  useEffect(() => {
+    api
+      .get('/clients/', { params: { page_size: 100 } })
+      .then((res) => setClients(res.data.items || []))
+      .catch(() => {})
   }, [])
 
   const clientMap = useMemo(
     () => Object.fromEntries(clients.map((cl) => [cl.id, cl.name])),
     [clients]
   )
-
-  const filtered = useMemo(() => {
-    return phases.filter((p) => {
-      if (filters.client_id && p.client_id !== Number(filters.client_id)) return false
-      if (filters.status && p.status !== filters.status) return false
-      if (filters.type && p.type !== filters.type) return false
-      if (filters.from && (!p.start_date || p.start_date < filters.from)) return false
-      if (filters.to && (!p.end_date || p.end_date > filters.to)) return false
-      return true
-    })
-  }, [phases, filters])
 
   const set = (k) => (e) => setFilters({ ...filters, [k]: e.target.value })
 
@@ -115,7 +127,7 @@ export default function Phases() {
       </div>
 
       {error && <div className="error">{error}</div>}
-      <p className="muted">{filtered.length} of {phases.length} phases</p>
+      <p className="muted">{pageRangeText(page, PAGE_SIZE, total, 'phases')}</p>
 
       <div className="card" style={{ padding: 0, overflow: 'visible' }}>
         <table className="table">
@@ -131,7 +143,7 @@ export default function Phases() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => {
+            {phases.map((p) => {
               const modules = (p.module_names || p.modules || [])
                 .map((module) => (typeof module === 'string' ? module : module?.name))
                 .filter(Boolean)
@@ -162,12 +174,14 @@ export default function Phases() {
                 </tr>
               )
             })}
-            {filtered.length === 0 && (
+            {phases.length === 0 && (
               <tr><td colSpan={7} className="muted" style={{ textAlign: 'center' }}>No phases match these filters.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} pages={pages} onPageChange={setPage} />
     </div>
   )
 }

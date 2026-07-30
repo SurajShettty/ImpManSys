@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/client'
-import { StatusBadge, PriorityBadge } from '../components/ui'
+import { StatusBadge, PriorityBadge, Pagination, pageRangeText } from '../components/ui'
+
+const PAGE_SIZE = 20
 
 const BLANK = {
   name: '',
@@ -30,12 +32,32 @@ export default function Clients() {
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
   const [filters, setFilters] = useState({ region: '', status: '', implementation_state: '' })
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [pages, setPages] = useState(1)
 
   const load = () => {
-    api.get('/clients/').then((res) => setClients(res.data)).catch(() => setError('Failed to load clients'))
+    setError('')
+    const params = { page, page_size: PAGE_SIZE }
+    if (filters.region) params.region = filters.region
+    if (filters.status) params.status = filters.status
+    if (filters.implementation_state) params.implementation_state = filters.implementation_state
+    api
+      .get('/clients/', { params })
+      .then((res) => {
+        setClients(res.data.items || [])
+        setTotal(res.data.total || 0)
+        setPages(res.data.pages || 1)
+      })
+      .catch(() => setError('Failed to load clients'))
   }
 
-  useEffect(load, [])
+  useEffect(load, [filters, page])
+
+  // Reset to page 1 whenever the filters change.
+  useEffect(() => {
+    setPage(1)
+  }, [filters])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -58,13 +80,6 @@ export default function Clients() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
-  const filteredClients = clients.filter((c) => {
-    if (filters.region && c.region !== filters.region) return false
-    if (filters.status && c.status !== filters.status) return false
-    if (filters.implementation_state && c.implementation_state !== filters.implementation_state) return false
-    return true
-  })
-
   return (
     <div>
       <div className="page-header">
@@ -73,7 +88,6 @@ export default function Clients() {
           {showForm ? 'Cancel' : '+ New Client'}
         </button>
       </div>
-      {error && <div className="error">{error}</div>}
 
       {showForm && (
         <div className="card" style={{ marginBottom: '1rem' }}>
@@ -178,6 +192,9 @@ export default function Clients() {
         </div>
       </div>
 
+      {error && <div className="error">{error}</div>}
+      <p className="muted">{pageRangeText(page, PAGE_SIZE, total, 'clients')}</p>
+
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="table">
           <thead>
@@ -196,7 +213,7 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody>
-            {filteredClients.map((c) => (
+            {clients.map((c) => (
               <tr key={c.id}>
                 <td><Link to={`/clients/${c.id}`}>{c.name}</Link></td>
                 <td>{c.region || '—'}</td>
@@ -217,12 +234,14 @@ export default function Clients() {
                 <td>{c.phase_count}</td>
               </tr>
             ))}
-            {filteredClients.length === 0 && (
+            {clients.length === 0 && (
               <tr><td colSpan={11} className="muted" style={{ textAlign: 'center' }}>No clients match the filters.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} pages={pages} onPageChange={setPage} />
     </div>
   )
 }

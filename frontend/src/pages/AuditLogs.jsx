@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import api from '../api/client'
+import { Pagination, pageRangeText } from '../components/ui'
 
 const ENTITIES = ['client', 'phase', 'phase_module', 'module', 'activity', 'user']
 const ACTIONS = ['create', 'update', 'delete', 'restore']
@@ -61,15 +62,6 @@ export default function AuditLogs() {
   }
 
   const hasFilters = filters.entity || filters.action || filters.user_id
-  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const end = Math.min(page * PAGE_SIZE, total)
-
-  const pageNumbers = []
-  const maxButtons = 7
-  let from = Math.max(1, page - 3)
-  let to = Math.min(pages, from + maxButtons - 1)
-  from = Math.max(1, to - maxButtons + 1)
-  for (let i = from; i <= to; i++) pageNumbers.push(i)
 
   return (
     <div>
@@ -113,9 +105,7 @@ export default function AuditLogs() {
       </div>
 
       {error && <div className="error">{error}</div>}
-      <p className="muted">
-        {total === 0 ? 'No entries' : `Showing ${start}–${end} of ${total} entries`}
-      </p>
+      <p className="muted">{pageRangeText(page, PAGE_SIZE, total, 'entries')}</p>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="table">
@@ -151,45 +141,7 @@ export default function AuditLogs() {
         </table>
       </div>
 
-      {pages > 1 && (
-        <div className="pagination">
-          <button
-            className="btn btn-light btn-sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            ‹ Prev
-          </button>
-          {from > 1 && (
-            <>
-              <button className="pagination-btn" onClick={() => setPage(1)}>1</button>
-              {from > 2 && <span className="pagination-ellipsis">…</span>}
-            </>
-          )}
-          {pageNumbers.map((n) => (
-            <button
-              key={n}
-              className={`pagination-btn ${n === page ? 'active' : ''}`}
-              onClick={() => setPage(n)}
-            >
-              {n}
-            </button>
-          ))}
-          {to < pages && (
-            <>
-              {to < pages - 1 && <span className="pagination-ellipsis">…</span>}
-              <button className="pagination-btn" onClick={() => setPage(pages)}>{pages}</button>
-            </>
-          )}
-          <button
-            className="btn btn-light btn-sm"
-            onClick={() => setPage((p) => Math.min(pages, p + 1))}
-            disabled={page === pages}
-          >
-            Next ›
-          </button>
-        </div>
-      )}
+      <Pagination page={page} pages={pages} onPageChange={setPage} />
     </div>
   )
 }
