@@ -1,18 +1,18 @@
-# Implementation Management System (IMS) — Project Guide
+# Implementation Management System (IMS) — Architecture & Flows
 
-> A centralized platform for managing client onboarding, implementation, rollout, enhancements, and adoption.
+> A centralized platform for managing client onboarding, implementation, rollout, and enhancements.
 
 ---
 
 ## 1. What is this project?
 
-The **Implementation Management System (IMS)** is an internal customer-success and implementation-management platform. It is built around the hierarchy:
+The **Implementation Management System (IMS)** is an internal customer-success and implementation-management platform, built for Digii (formerly CollPoll). It is built around the hierarchy:
 
 ```
-Client → Project → Module → Phase → Task → Checklist → Completion
+Client → Phase → Module → Activity → Checklist → Completion
 ```
 
-Every client can have multiple projects. Each project can contain multiple modules. When a module is added to a project, the system automatically generates a standard 7-phase implementation plan with tasks. As tasks are completed, progress rolls up to the phase, module, and project levels. Managers see this on a dashboard.
+Every client can have multiple phases. Every new phase automatically gets a "Kickoff" module with its default activities. Additional modules can be added to a phase, each auto-generating its own predefined activity plan. As activities are completed, progress rolls up: Activity → Module → Phase, and the client's implementation state flips to "Go Live" once every activity is done. Meetings can be logged against a phase for a communication trail. Managers see all of this on a dashboard.
 
 ---
 
@@ -21,7 +21,7 @@ Every client can have multiple projects. Each project can contain multiple modul
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | **Frontend** | React 18 + Vite | Browser UI |
-| **Routing** | react-router-dom | SPA navigation |
+| **Routing** | react-router-dom v6 | SPA navigation |
 | **HTTP client** | axios | API calls to backend |
 | **Backend API** | FastAPI (Python 3.12) | REST API |
 | **Database** | PostgreSQL 16 | Persistent data |
@@ -30,9 +30,10 @@ Every client can have multiple projects. Each project can contain multiple modul
 | **Authentication** | JWT (python-jose + bcrypt) | Stateless login |
 | **Password hashing** | bcrypt | Secure password storage |
 | **Validation** | Pydantic / Pydantic-Settings | Request/response schemas & config |
-| **File Storage** | Local filesystem (mounted volume) | Uploads |
-| **Reverse Proxy** | Nginx | Routes `/api`, `/docs`, `/uploads` and SPA |
+| **Reverse Proxy** | Nginx | Routes `/api`, `/docs`, and the SPA |
 | **Deployment** | Docker Compose | Local and containerized deployment |
+
+There is no UI component library, no client-side state management library, no test runner (backend or frontend), and no CI configuration in the repo.
 
 ---
 
@@ -41,49 +42,38 @@ Every client can have multiple projects. Each project can contain multiple modul
 ```
 ImpManSys/
 ├── .env.example                 # Example environment variables
-├── .gitignore
 ├── docker-compose.yml           # Multi-service orchestration
 ├── README.md                    # Quick start
 ├── docs/                        # Product & design docs
-│   ├── Implementation_Management_System_SOP.md
-│   ├── IMS_Database_Design.md
-│   ├── IMS_PRD.md
-│   ├── IMS_UI_UX_Specification.md
-│   └── IMS_Architecture_and_Flows.md  # This file
 ├── backend/                     # FastAPI application
 │   ├── app/
-│   │   ├── __init__.py
 │   │   ├── main.py              # FastAPI app & router registration
 │   │   ├── config.py            # Pydantic settings
 │   │   ├── database.py          # SQLAlchemy engine & session
 │   │   ├── models.py            # SQLAlchemy ORM models
 │   │   ├── schemas.py           # Pydantic request/response schemas
 │   │   ├── auth.py              # Password hashing & JWT helpers
-│   │   ├── dependencies.py      # Auth dependency injections
+│   │   ├── dependencies.py      # Auth / permission dependency injections
 │   │   ├── utils/
-│   │   │   ├── seed.py          # Roles, modules, admin user seed
+│   │   │   ├── seed.py          # Roles, permissions, modules, admin user seed
 │   │   │   └── audit.py         # Activity logging helper
 │   │   ├── services/
-│   │   │   ├── __init__.py
-│   │   │   └── templates.py     # Module plan generation & progress roll-up
+│   │   │   └── templates.py     # Module activity-plan generation & progress roll-up
 │   │   └── routers/
 │   │       ├── auth.py          # Login / current user
 │   │       ├── users.py         # User CRUD
-│   │       ├── roles.py         # Role CRUD
-│   │       ├── clients.py       # Client CRUD
-│   │       ├── projects.py      # Project CRUD + module add/remove + plan
+│   │       ├── roles.py         # Role & permission matrix
+│   │       ├── clients.py       # Client CRUD, per-client meetings/phases
+│   │       ├── phases.py        # Phase CRUD, phase-modules, meetings
 │   │       ├── modules.py       # Module catalogue
-│   │       ├── tasks.py         # Task CRUD + checklist
+│   │       ├── activities.py    # Activity CRUD, checklist, reordering
 │   │       ├── dashboard.py     # Dashboard summary
+│   │       ├── search.py        # Global search
+│   │       ├── audit_logs.py    # Audit trail viewer
+│   │       ├── recycle_bin.py   # Soft-delete recovery
 │   │       └── health.py        # Health check
-│   ├── alembic/                 # Database migrations
-│   │   ├── versions/
-│   │   │   ├── 001_initial_schema.py
-│   │   │   └── 8cb1a7727bd3_core_hierarchy_clients_projects_modules_.py
-│   │   └── env.py
-│   ├── uploads/                 # File uploads (local)
+│   ├── alembic/versions/        # Database migrations
 │   ├── .env                     # Runtime config (not in git)
-│   ├── alembic.ini
 │   ├── Dockerfile
 │   ├── entrypoint.sh            # Startup: wait for DB, migrate, seed, run
 │   └── requirements.txt
@@ -91,30 +81,34 @@ ImpManSys/
 │   ├── src/
 │   │   ├── main.jsx             # React entry point
 │   │   ├── App.jsx              # Routes
-│   │   ├── index.css            # Global styles
-│   │   ├── api/
-│   │   │   └── client.js        # Axios instance with token interceptor
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx  # Auth state provider
+│   │   ├── index.css            # Global styles (incl. dark mode)
+│   │   ├── api/client.js        # Axios instance with token interceptor
+│   │   ├── context/AuthContext.jsx
 │   │   ├── components/
-│   │   │   ├── Layout.jsx       # App shell / navigation
+│   │   │   ├── Layout.jsx       # App shell / navbar / dark-mode toggle / global search
 │   │   │   ├── PrivateRoute.jsx # Login guard
-│   │   │   ├── RoleRoute.jsx    # Role-based guard
+│   │   │   ├── RoleRoute.jsx    # Role-name guard
+│   │   │   ├── PermissionRoute.jsx # Permission-code guard
+│   │   │   ├── Timeline.jsx     # Module progress bar & custom Gantt chart
 │   │   │   └── ui.jsx           # Reusable UI components
 │   │   └── pages/
 │   │       ├── Login.jsx
 │   │       ├── Dashboard.jsx
 │   │       ├── Clients.jsx
 │   │       ├── ClientDetail.jsx
-│   │       ├── Projects.jsx
-│   │       ├── ProjectDetail.jsx
-│   │       └── Users.jsx
+│   │       ├── Phases.jsx
+│   │       ├── PhaseDetail.jsx  # Add modules, view Gantt, update activities/checklists/meetings
+│   │       ├── Users.jsx
+│   │       ├── SearchResults.jsx
+│   │       ├── AuditLogs.jsx
+│   │       ├── RecycleBin.jsx
+│   │       └── RolePermissions.jsx
 │   ├── Dockerfile
 │   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
 └── nginx/
-    └── default.conf               # Reverse proxy configuration
+    └── default.conf              # Reverse proxy configuration
 ```
 
 ---
@@ -137,12 +131,7 @@ Services started:
 | Vite dev server | `ims-frontend` | `5173` | React dev server |
 | Nginx | `ims-nginx` | `80` | Public entry point |
 
-Public URLs:
-
-- Web app: `http://localhost`
-- API docs (Swagger): `http://localhost/docs`
-- ReDoc: `http://localhost/redoc`
-- Direct backend: `http://localhost:8000`
+Public URLs: `http://localhost` (web app), `http://localhost/docs` (Swagger), `http://localhost/redoc` (ReDoc), `http://localhost:8000` (direct backend).
 
 ### Without Docker (local development)
 
@@ -152,7 +141,6 @@ Public URLs:
 cd backend
 python -m venv .venv
 .venv\Scripts\activate       # Windows
-# source .venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 alembic upgrade head
 python -c "from app.database import SessionLocal; from app.utils.seed import seed_data; db = SessionLocal(); seed_data(db); db.close()"
@@ -169,27 +157,19 @@ npm run dev
 
 ---
 
-## 5. Default Users & Roles
+## 5. Default Roles, Permissions & Seed Data
 
-On first startup, `seed_data()` creates:
+On every startup, `seed_data()` idempotently creates/updates:
 
-| Role | Description |
-|------|-------------|
-| Administrator | Full system access |
-| Customer Success Manager | Manages client relationships |
-| Project Manager | Manages projects and resources |
-| Implementation Executive | Executes implementation tasks |
-| Data Team | Handles data and reports |
-| Support Team | Provides client support |
-| Management | Views dashboards and reports |
-| Client | Client portal view-only access |
+**Roles:** Administrator, Customer Success Manager, Project Manager, Implementation Executive, Data Team, Support Team, Management, Client.
 
-Default administrator login:
+**Permissions:** fine-grained codes in the form `resource.action`, grouped into categories System, Users, Clients, Phases, Modules, Activities, Meetings (full list in `backend/app/utils/seed.py`). The Administrator role always has every permission; other roles get a curated subset.
 
-- Email: `admin@ims.local`
-- Password: `admin123`
+**Module catalogue** (18 seeded modules): Kickoff, Master Data Management, Admission Management, Finance Management, Infrastructure Management, Institutional Calendar, Academic Management System, Feedback Management, Examination Management System, Learning Management System, Hostel Management, Placement and Internship, Transportation Management, Member Records, Campus Help Center, HR Management, Booth Management, Koha.
 
-The system also seeds the **module catalogue** (15 standard modules): Admissions, Attendance, Academics, Finance, Examination, Hostel, Transport, Library, LMS, Feedback, Placement, Research, Alumni, Campus Help Centre, Analytics.
+**Default administrator login:** `admin@ims.local` / `admin123`.
+
+Seeding also migrates old permission codes (`project.*`, `task.*`) to their current names (`phase.*`, `activity.*`) so existing role mappings survive the Project→Phase / Task→Activity rename.
 
 ---
 
@@ -197,341 +177,235 @@ The system also seeds the **module catalogue** (15 standard modules): Admissions
 
 ### Flow
 
-1. User submits email/password to `POST /api/auth/login`.
+1. User submits email/password (as OAuth2 form fields) to `POST /api/auth/login`.
 2. Backend verifies password with `bcrypt`.
 3. Backend issues a **JWT access token** signed with `SECRET_KEY`.
-4. Token expires after `ACCESS_TOKEN_EXPIRE_MINUTES` (default: 24 hours).
+4. Token expires after `ACCESS_TOKEN_EXPIRE_MINUTES` (default: 1440 = 24 hours).
 5. Frontend stores the token in `localStorage` and sends it as `Authorization: Bearer <token>` on every request.
-6. `dependencies.py` decodes the token and loads the current user.
-7. `require_role(...)` guards endpoints by role name.
+6. `dependencies.py` decodes the token and loads the current active user.
+7. Each endpoint is guarded with `require_permission("<code>")`, which checks the current user's role's permission codes (not the role name directly).
 
-### Role Restrictions
+### Permission Model
 
-| Area | Allowed Roles |
-|------|---------------|
-| Clients CRUD | Administrator, Customer Success Manager, Project Manager |
-| Projects CRUD | Administrator, Customer Success Manager, Project Manager |
-| Add/remove modules | Administrator, Customer Success Manager, Project Manager |
-| Task CRUD, checklist | Administrator, CSM, Project Manager, Implementation Executive |
-| Module catalogue create | Administrator only |
-| Users CRUD | Administrator only (UI) |
-| Dashboard / read | Any authenticated active user |
-| Client delete | Administrator only |
+Unlike a simple role check, authorization is driven by the **role → permissions** mapping configured in the database (editable via the Role Permissions screen). `require_permission(*codes)` passes if the user's role has *any* of the listed codes; `require_all_permissions(*codes)` requires *all* of them. A legacy `require_role(*names)` helper also exists for role-name checks but the routers use permission codes exclusively.
 
 ---
 
 ## 7. Data Model / Entity Hierarchy
 
-### Core Entities
+See `docs/IMS_ERD.md` for the full entity list and `docs/IMS_Database_Design.md` for column-level detail. Summary:
 
 ```
-┌─────────────────┐
-│     Role        │
-└────────┬────────┘
-         │
-┌────────▼────────┐     ┌─────────────────┐     ┌─────────────────┐
-│      User       │     │     Client      │     │     Module      │
-│  (system users) │     │   (customer)    │     │  (catalogue)    │
-└────────┬────────┘     └────────┬────────┘     └─────────────────┘
-         │                         │
-         │              ┌──────────▼──────────┐
-         │              │       Project       │
-         │              │  (engagement work)  │
-         │              └──────────┬──────────┘
-         │                         │
-         │              ┌──────────▼──────────┐     ┌──────────────┐
-         │              │   ProjectModule     │────▶│   Module     │
-         │              │ (module instance)   │     └──────────────┘
-         │              └──────────┬──────────┘
-         │                         │
-         │              ┌──────────▼──────────┐
-         │              │       Phase         │
-         │              │  (implementation    │
-         │              │      step)          │
-         │              └──────────┬──────────┘
-         │                         │
-         │              ┌──────────▼──────────┐     ┌──────────────┐
-         │              │        Task         │◀────│ TaskDependency│
-         └─────────────▶│ (assigned work)     │     └──────────────┘
-                        └──────────┬──────────┘
-                                   │
-                        ┌──────────▼──────────┐
-                        │    ChecklistItem    │
-                        │  (sub-completion)     │
-                        └─────────────────────┘
+Role ──< User >── Client (csm_id / pm_id / rm_id)
+                      │
+                   Phase ──< Meeting
+                      │
+                 PhaseModule >── Module (catalogue)
+                      │
+                  Activity ──< ChecklistItem
+                      │
+              ActivityDependency (schema only, unused)
 ```
 
-### Table Descriptions
-
-| Table | Purpose |
-|-------|---------|
-| `roles` | Master list of user roles |
-| `users` | System users (admins, managers, executives, etc.) |
-| `clients` | Customers / institutions |
-| `modules` | Master catalogue of implementable modules |
-| `projects` | An engagement under a client |
-| `project_modules` | A module selected for a specific project |
-| `phases` | One of the 7 standard implementation phases inside a module |
-| `tasks` | Actionable work item under a phase |
-| `checklist_items` | Sub-items under a task |
-| `task_dependencies` | Task-to-task dependency links |
-| `activity_logs` | Audit trail of user actions |
-
-### Key Relationships
-
-- `Client` has many `Project`s (`cascade delete`).
-- `Project` has many `ProjectModule`s (`cascade delete`).
-- `ProjectModule` has many `Phase`s (`cascade delete`).
-- `Phase` has many `Task`s (`cascade delete`).
-- `Task` has many `ChecklistItem`s (`cascade delete`).
-- `Task` has many `TaskDependency` rows (`cascade delete`).
-- `User` is referenced by `Client.csm_id`, `Client.pm_id`, `Task.owner_id`, `Task.reviewer_id`.
+- `Client` has many `Phase`s (cascade soft-delete).
+- `Phase` has many `PhaseModule`s and `Meeting`s (cascade soft-delete).
+- `PhaseModule` has many `Activity`s (cascade soft-delete).
+- `Activity` has many `ChecklistItem`s (cascade soft-delete).
+- `User` is referenced by `Client.csm_id/pm_id/rm_id`, `Activity.owner_id/reviewer_id`, `Meeting.created_by`.
 
 ---
 
-## 8. Project Lifecycle: What Gets Created When
+## 8. Lifecycle: What Gets Created When
 
 ### 8.1 Application Startup
 
-When the backend container starts (`entrypoint.sh`):
-
-1. Waits for PostgreSQL to accept connections.
-2. Runs `alembic upgrade head` to apply migrations.
-3. Runs `seed_data()`:
-   - Creates default `roles` if missing.
-   - Creates default `modules` catalogue if missing.
-   - Creates the default `admin@ims.local` user if missing.
-4. Starts `uvicorn`.
+`entrypoint.sh`: wait for PostgreSQL → `alembic upgrade head` → `seed_data()` → start `uvicorn`. Seeding runs on every startup and is idempotent (safe to run repeatedly).
 
 ### 8.2 Creating a Client
 
-Endpoint: `POST /api/clients`
+`POST /api/clients` (requires `client.create`) — creates one `clients` row and an audit log entry. No modules/phases exist yet.
 
-Required fields: `name`  
-Optional fields: `crm_id`, `institution_type`, `status`, `priority`, `contract_start`, `end_date`, `go_live_date`, `csm_id`, `pm_id`, `sales_owner`
+### 8.3 Creating a Phase
 
-What is created:
+`POST /api/phases` (requires `phase.create`) — creates one `phases` row, **then automatically creates a "Kickoff" `phase_modules` row with its 4 default activities** (Requirement Gathering, Stakeholder Identification, Scope Confirmation, Timeline Approval).
 
-- One row in the `clients` table.
-- An `activity_logs` entry: `"client" "create"`.
+### 8.4 Adding a Module to a Phase
 
-### 8.3 Creating a Project
+`POST /api/phases/{id}/modules` (requires `module.create`) with `{"module_id": ...}`:
 
-Endpoint: `POST /api/projects`
+1. Validates the module exists and isn't already added to this phase.
+2. Creates one `phase_modules` row.
+3. Looks up the module's activity template in `MODULE_ACTIVITY_TEMPLATES` (`backend/app/services/templates.py`) and creates one `activities` row per template entry (template lengths vary per module — e.g. Kickoff has 4, Examination Management System has 19).
+4. Recomputes the phase's progress (stays low since the new module starts at 0%).
 
-Required fields: `client_id`, `name`  
-Optional fields: `description`, `type`, `status`, `start_date`, `end_date`
+### 8.5 Updating an Activity
 
-What is created:
+`PUT /api/activities/{id}` (requires `activity.update`):
 
-- One row in the `projects` table with `progress = 0` and `status = "Not Started"`.
-- An `activity_logs` entry: `"project" "create"`.
+1. Updates the activity row.
+2. If `status` changes to `"Completed"`, `progress` is forced to `100`. If it changes *away* from `"Completed"` without an explicit new progress value, `progress` resets to `0`.
+3. `recompute_phase_module_progress()` averages non-cancelled activity progress into the owning module, then cascades into `recompute_phase_progress()` for the phase, which in turn calls `recompute_client_implementation_state()` — setting the client's `implementation_state` to `"Go Live"` once every activity across the client is completed.
+4. An audit log entry is recorded.
 
-**A project starts empty.** It has no modules until you explicitly add them.
-
-### 8.4 Adding a Module to a Project
-
-Endpoint: `POST /api/projects/{id}/modules`
-
-Required body: `module_id`
-
-What is created **automatically** for every module added:
-
-| Object | Count | Description |
-|--------|-------|-------------|
-| `project_modules` row | 1 | Links the module to the project |
-| `phases` rows | 7 | Kickoff → Configuration → Data Preparation → Testing → Training → Go-Live → Hypercare |
-| `tasks` rows | 28 | 4 tasks per phase (standard template) |
-
-The standard template is defined in `backend/app/services/templates.py`:
-
-| Phase | Tasks |
-|-------|-------|
-| Kickoff | Requirement Gathering, Stakeholder Identification, Scope Confirmation, Timeline Approval |
-| Configuration | System Configuration, User Roles, Permissions, Academic Setup |
-| Data Preparation | Student Import, Faculty Import, Programme Mapping, Timetable Upload |
-| Testing | Functional Testing, UAT, Issue Resolution |
-| Training | Admin Training, Faculty Training, Student Orientation |
-| Go-Live | Production Enablement, Monitoring |
-| Hypercare | Daily Monitoring, Bug Fixes, Client Support |
-
-After creation, the project-level progress is recalculated. Because the module starts at 0%, the project stays at 0%.
-
-**Example:** If a project has 3 modules added, the database contains:
-
-- 3 `project_modules` rows
-- 21 `phases` rows
-- 84 `tasks` rows
-
-### 8.5 Updating a Task
-
-Endpoint: `PUT /api/tasks/{id}`
-
-What happens:
-
-1. The task row is updated (status, progress, dates, owner, reviewer, etc.).
-2. If the status is changed to `"Completed"` and no progress is provided, `progress` is set to `100` automatically.
-3. `recompute_project_module_progress()` is called:
-   - It averages all task progress values for the module.
-   - It sets the module `status` to `"Completed"`, `"In Progress"`, or `"Not Started"` accordingly.
-4. `recompute_project_progress()` is called:
-   - It averages all module progress values for the project.
-   - It updates the project `status` unless it is `"On Hold"` or `"Cancelled"`.
-5. An `activity_logs` entry is created: `"task" "update"`.
-
-So the progress flows upward: **Task → Module → Project**.
+So progress flows: **Activity → PhaseModule → Phase → Client.implementation_state**.
 
 ### 8.6 Checklist Items
 
-Endpoint: `POST /api/tasks/{task_id}/checklist`
+`POST /api/activities/{id}/checklist` adds an item; `PUT /api/activities/checklist/{item_id}` toggles it. Checklist completion is a manual tracking aid — it does not feed into progress calculations.
 
-- Adds a `checklist_items` row linked to a task.
-- Can be toggled complete/incomplete via `PUT /api/tasks/checklist/{item_id}`.
-- Checklist completion does **not** currently auto-update task progress; it is a manual tracking aid.
+### 8.7 Reordering Activities
 
-### 8.7 Closing/Deleting a Project
+`POST /api/activities/reorder/{phase_module_id}` with an ordered list of activity IDs. The frontend implements this with native HTML5 drag-and-drop in `PhaseDetail.jsx`.
 
-- Deleting a project (`DELETE /api/projects/{id}`) cascades and deletes all `project_modules`, `phases`, `tasks`, `checklist_items`, and `task_dependencies` under it.
-- Deleting a client cascades and deletes all its projects too.
+### 8.8 Meetings
+
+`POST /api/phases/{id}/meetings` logs a meeting against a phase. `GET /api/clients/{id}/meetings` rolls up meetings across all of a client's phases.
+
+### 8.9 Deleting Things
+
+Deleting a client/phase/phase-module/activity soft-deletes it and cascades to its children in the same transaction (see `docs/IMS_ERD.md` §Soft Delete). Nothing is hard-deleted through the API.
 
 ---
 
 ## 9. Dashboard
 
-Endpoint: `GET /api/dashboard/summary`
-
-Returns:
+`GET /api/dashboard/summary` (requires `dashboard.view`), optionally filtered by `client_status`, `region`, `phase_status`, `owner_id`:
 
 | Field | Definition |
 |-------|------------|
-| `total_clients` | Count of all clients |
-| `total_projects` | Count of all projects |
-| `active_projects` | Projects with status `"Not Started"`, `"In Progress"`, or `"On Hold"` |
-| `delayed_projects` | Projects not `"Completed"`/`"Cancelled"` with `end_date < today` |
+| `total_clients` | Count of matching clients |
+| `total_phases` | Count of matching phases |
+| `active_phases` | Phases with status Not Started / In Progress / On Hold |
+| `delayed_phases` | Phases not Completed/Cancelled with `end_date < today` |
 | `go_live_this_month` | Clients with `go_live_date` in the current calendar month |
 
 ---
 
 ## 10. API Endpoints
 
-| Method | Path | Description | Access |
-|--------|------|-------------|--------|
+| Method | Path | Description | Permission |
+|--------|------|-------------|------------|
 | POST | `/api/auth/login` | Login, returns JWT | Public |
-| GET | `/api/auth/me` | Current logged-in user | Any authenticated |
-| GET | `/api/users` | List users | Any authenticated |
-| POST | `/api/users` | Create user | Any authenticated (router-level) |
-| GET | `/api/roles` | List roles | Any authenticated |
-| GET | `/api/clients` | List clients | Any authenticated |
-| POST | `/api/clients` | Create client | Manager roles |
-| GET | `/api/clients/{id}` | Client detail | Any authenticated |
-| PUT | `/api/clients/{id}` | Update client | Manager roles |
-| DELETE | `/api/clients/{id}` | Delete client | Administrator |
-| GET | `/api/clients/{id}/projects` | List projects under a client | Any authenticated |
-| GET | `/api/projects` | List projects | Any authenticated |
-| POST | `/api/projects` | Create project | Manager roles |
-| GET | `/api/projects/{id}` | Project detail | Any authenticated |
-| PUT | `/api/projects/{id}` | Update project | Manager roles |
-| DELETE | `/api/projects/{id}` | Delete project | Administrator / PM |
-| GET | `/api/projects/{id}/modules` | Modules under a project | Any authenticated |
-| POST | `/api/projects/{id}/modules` | Add a module (auto-generates plan) | Manager roles |
-| DELETE | `/api/projects/{id}/modules/{pm_id}` | Remove a module | Manager roles |
-| GET | `/api/projects/{id}/plan` | Full drill-down plan | Any authenticated |
-| GET | `/api/modules` | Module catalogue | Any authenticated |
-| POST | `/api/modules` | Create a new module in catalogue | Administrator |
-| GET | `/api/tasks/{id}` | Task detail | Any authenticated |
-| POST | `/api/tasks` | Create a task | Executor roles |
-| PUT | `/api/tasks/{id}` | Update a task (triggers progress roll-up) | Executor roles |
-| DELETE | `/api/tasks/{id}` | Delete a task | Executor roles |
-| POST | `/api/tasks/{id}/checklist` | Add checklist item | Executor roles |
-| PUT | `/api/tasks/checklist/{item_id}` | Update checklist item | Executor roles |
-| DELETE | `/api/tasks/checklist/{item_id}` | Delete checklist item | Executor roles |
-| GET | `/api/dashboard/summary` | Dashboard summary | Any authenticated |
+| GET | `/api/auth/me` | Current logged-in user + permissions | Any authenticated |
+| GET/POST | `/api/users` | List / create users | `user.view` / `user.create` |
+| GET/PUT/DELETE | `/api/users/{id}` | User detail / update / soft-delete | `user.view` / `user.update` / `user.delete` |
+| GET | `/api/roles` | List roles | `role.manage` |
+| GET/PUT | `/api/roles/{id}/permissions` | View / update a role's permission set | `role.manage` |
+| GET | `/api/roles/permissions/all` | List every permission code | `role.manage` |
+| GET/POST | `/api/clients` | List / create clients | `client.view`* / `client.create` |
+| GET/PUT/DELETE | `/api/clients/{id}` | Client detail / update / delete | various `client.*` |
+| GET | `/api/clients/{id}/phases` | Phases under a client | Any authenticated |
+| GET | `/api/clients/{id}/meetings` | Meetings across all of a client's phases | Any authenticated |
+| GET/POST | `/api/phases` | List / create phases (`client_id` query filter) | `phase.view` / `phase.create` |
+| GET/PUT/DELETE | `/api/phases/{id}` | Phase detail / update / delete | `phase.*` |
+| GET/POST | `/api/phases/{id}/modules` | List / add phase modules (auto-generates activities) | `module.view` / `module.create` |
+| DELETE | `/api/phases/{id}/modules/{pm_id}` | Remove a module from a phase | `module.delete` |
+| GET | `/api/phases/{id}/plan` | Full drill-down: modules → activities → checklists | `phase.view` |
+| GET/POST/PUT/DELETE | `/api/phases/{id}/meetings[/{meeting_id}]` | Meeting CRUD | `meeting.*` |
+| GET/POST | `/api/modules` | Module catalogue list / create | `module.view` / `module.create` |
+| GET/PUT/DELETE | `/api/activities/{id}` | Activity detail / update (rolls up progress) / delete | `activity.*` |
+| POST | `/api/activities/` | Create an activity | `activity.create` |
+| POST/PUT/DELETE | `/api/activities/{id}/checklist`, `/api/activities/checklist/{item_id}` | Checklist item CRUD | `activity.update` |
+| POST | `/api/activities/reorder/{phase_module_id}` | Reorder activities within a module | `activity.update` |
+| GET | `/api/dashboard/summary` | Dashboard summary cards | `dashboard.view` |
+| GET | `/api/search?q=` | Global search across clients/phases/activities/users | `search.view` |
+| GET | `/api/audit-logs` | Paginated audit trail (filter by entity/action/user) | `audit.view` |
+| GET | `/api/recycle-bin` | List soft-deleted items still within the 12-hour window | `recycle_bin.view` |
+| POST | `/api/recycle-bin/restore/{entity}/{id}` | Restore a soft-deleted item | `recycle_bin.restore` |
 | GET | `/api/health` | Health check | Public |
+
+*`client.view` is not currently enforced on the list/detail client endpoints — they only require an authenticated active user (see `backend/app/routers/clients.py`). Everything else in this table maps to a real `require_permission(...)` dependency in the corresponding router.
 
 ---
 
 ## 11. Frontend Pages & Navigation
 
-| Route | Page | Notes |
+| Route | Page | Guard |
 |-------|------|-------|
 | `/login` | Login | Public |
-| `/` | Dashboard | Management summary cards |
-| `/clients` | Clients | List and create clients |
-| `/clients/:id` | ClientDetail | Client info + projects |
-| `/projects` | Projects | List and create projects |
-| `/projects/:id` | ProjectDetail | Add modules, view plan, update tasks |
-| `/users` | Users | Admin-only user management |
+| `/` | Dashboard | Any authenticated |
+| `/clients` | Clients | Any authenticated |
+| `/clients/:id` | ClientDetail | Any authenticated |
+| `/phases` | Phases | Any authenticated |
+| `/phases/:id` | PhaseDetail | Any authenticated |
+| `/search` | SearchResults | Any authenticated |
+| `/users` | Users | `user.view` |
+| `/audit-logs` | AuditLogs | `audit.view` |
+| `/recycle-bin` | RecycleBin | `recycle_bin.view` |
+| `/role-permissions` | RolePermissions | `role.manage` |
 
-The `Layout` component wraps all private routes and shows navigation plus the authenticated user's email.
+`Layout.jsx` wraps every private route: a navbar with the Digii logo, Dashboard/Clients/Phases links, a permission-gated Users link, a permission-gated "Admin" dropdown (Audit Logs / Recycle Bin / Roles), a global search box, a dark-mode toggle (persisted in `localStorage`), and the current user's email/role with a logout button.
 
 ---
 
 ## 12. Configuration
 
-Environment variables (loaded from `.env` at the project root and passed to containers):
+Environment variables (loaded from `.env`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SECRET_KEY` | `change-me-in-production` | JWT signing key |
+| `SECRET_KEY` | `change-me-in-production` | JWT signing key — **must be overridden outside local dev** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Token lifetime (24 hours) |
+| `DEBUG` | `false` | Parsed from common truthy strings |
 | `DB_HOST` | `db` | PostgreSQL host (use `localhost` outside Docker) |
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_USER` | `ims` | Database user |
 | `DB_PASSWORD` | `ims` | Database password |
 | `DB_NAME` | `ims` | Database name |
 
+CORS is configured in `main.py` with a hardcoded allow-list (`http://localhost:5173`, `http://localhost`) — there's no environment-driven origin list for other deployments.
+
 ---
 
 ## 13. Nginx Routing
 
-`nginx/default.conf` proxies traffic:
+`nginx/default.conf` proxies:
 
-- `/api/*` → `backend:8000`
-- `/docs`, `/redoc`, `/openapi.json` → `backend:8000`
-- `/uploads/*` → static files from `/var/www/uploads`
-- Everything else → `frontend:5173` (React/Vite dev server) with WebSocket support for HMR
+- `/api/*`, `/docs`, `/redoc`, `/openapi.json` → `backend:8000`
+- `/uploads/*` → static files from `/var/www/uploads` (no backend route currently writes to this path — there is no file-upload feature yet)
+- Everything else → `frontend:5173` (Vite dev server) with WebSocket support for HMR
 
 In production, the frontend should be served as static build files rather than the Vite dev server.
 
 ---
 
-## 14. Current Implementation Status (as of Phase 3)
+## 14. Current Implementation Status
 
 **Implemented:**
 
-- Docker Compose environment with Nginx, PostgreSQL, FastAPI, and React.
-- JWT authentication and role-based access control.
-- User, role, client, project, module, task, and checklist management.
-- Automatic 7-phase implementation plan generation when a module is added to a project.
-- Real-time progress roll-up: Task → Module → Project.
-- Management dashboard summary.
-- Audit logging for key actions.
-- Alembic database migrations.
-- Idempotent seeding of roles, modules, and admin user.
+- Docker Compose environment (Nginx, PostgreSQL, FastAPI, React)
+- JWT authentication and fine-grained, admin-configurable permission-based access control
+- Client, phase, module, activity, checklist, and meeting management
+- Automatic Kickoff-module generation on phase creation; automatic activity-plan generation per module added
+- Real-time progress roll-up: Activity → Module → Phase → Client "Go Live" state
+- Management dashboard with filters
+- Global search
+- Paginated audit log viewer
+- Recycle bin with 12-hour restore window
+- Manual drag-and-drop activity reordering
+- Dark mode
+- Alembic migrations; idempotent seeding
 
-**Planned / Not Yet Implemented:**
+**Not Yet Implemented:**
 
-- Risk Register
-- Issue Tracker
-- Meeting / Communication log
-- Document repository with file uploads
-- Task dependency engine enforcement
-- Gantt timeline / Kanban board
+- Activity dependency enforcement (table exists, unused)
+- Document repository / file uploads (despite the Nginx `/uploads` route existing)
 - Notifications
-- Client portal
-- Usage & adoption dashboards
-- Reports and exports
+- Client-facing portal
+- Usage & adoption dashboards, exportable reports
+- Automated tests and CI
 
 ---
 
 ## 15. Key Design Decisions
 
-1. **Progress is derived, not stored per leaf.** Task progress is manual or auto-set to 100% on completion; module and project progress are calculated averages.
-2. **A module is a catalogue item; a project module is an instance.** This keeps templates reusable across projects.
-3. **Status is a string, not an enum.** This gives flexibility for statuses like `"Waiting for Client"`, `"Blocked"`, etc.
-4. **Cascading deletes** keep the hierarchy clean: deleting a client removes everything under it.
-5. **Seed data is idempotent.** It can run on every startup without creating duplicates.
-6. **Nginx is the single public entry point.** This simplifies CORS and routing during development.
+1. **Progress is derived, not stored per leaf beyond activity level.** Module and phase progress are calculated averages of their children, recomputed on every mutating request.
+2. **A module is a catalogue item; a phase module is an instance.** This keeps activity templates reusable across phases.
+3. **Status is a string, not an enum.** Gives flexibility for values like `"Waiting for Client"` or `"Blocked"` without a schema migration.
+4. **Cascading soft deletes** keep the hierarchy clean while remaining recoverable for 12 hours.
+5. **Authorization is permission-code based, not role-name based**, so an admin can rebalance access without a code change (except the Administrator role, which is fixed to all permissions).
+6. **Seed data is idempotent** and also migrates renamed permission codes, so it can run on every container startup.
+7. **Nginx is the single public entry point**, simplifying CORS and routing during development.
 
 ---
 
@@ -556,4 +430,4 @@ docker-compose logs -f backend
 
 ---
 
-*End of document. For product-level requirements, see `docs/IMS_PRD.md`; for SOP details, see `docs/Implementation_Management_System_SOP.md`; for database column-level design, see `docs/IMS_Database_Design.md`; for UI/UX screens, see `docs/IMS_UI_UX_Specification.md`.*
+*For product-level requirements, see `docs/IMS_PRD.md`; for SOP details, see `docs/Implementation_Management_System_SOP.md`; for database column-level design, see `docs/IMS_Database_Design.md`; for the ERD, see `docs/IMS_ERD.md`; for UI/UX screens, see `docs/IMS_UI_UX_Specification.md`.*

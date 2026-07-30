@@ -91,36 +91,43 @@ ImpManSys/
 └── docs/             # PRD, DB design, UI/UX spec, SOP
 ```
 
-## Implemented Phases
+## Implemented Features
 
-- **Phase 1**: Scaffolding & Infrastructure (Docker, Nginx, React, FastAPI)
-- **Phase 2**: Database & Authentication Foundation (JWT, roles, users, audit logs)
-- **Phase 3**: Core Implementation Hierarchy
-  - Client & Project CRUD with role-based access
-  - Module catalogue (15 standard modules per the SOP)
-  - `Client → Project → Module → Phase → Task → Checklist` hierarchy
-  - Automatic 7-phase implementation plan generation when a module is added
-    (Kickoff → Configuration → Data Preparation → Testing → Training → Go-Live → Hypercare)
-  - Real-time progress roll-up (task → module → project)
-  - Management dashboard summary (clients, active/delayed projects, upcoming go-lives)
+- Docker Compose environment (Nginx, PostgreSQL, FastAPI, React)
+- JWT authentication with a fine-grained, admin-editable permission matrix (not just role names)
+- `Client → Phase → Module → Activity → Checklist` hierarchy
+  - Every new phase automatically gets a "Kickoff" module with default activities
+  - Adding a module to a phase auto-generates that module's predefined activity list (module catalogue: 18 modules)
+  - Real-time progress roll-up: Activity → Module → Phase → Client "Go Live" state
+- Meeting & communication log per phase, rolled up per client
+- Management dashboard (clients, active/delayed phases, upcoming go-lives) with filters
+- Global search across clients, phases, activities, and users
+- Paginated audit log viewer and a 12-hour recycle bin for soft-deleted records
+- Drag-and-drop activity reordering, dark mode
 
-### Key API endpoints (Phase 3)
+### Key API endpoints
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET/POST | `/api/clients` | List / create clients |
 | GET/PUT/DELETE | `/api/clients/{id}` | Client detail / update / delete |
-| GET/POST | `/api/projects` | List / create projects |
-| POST | `/api/projects/{id}/modules` | Add a module (auto-generates its plan) |
-| GET | `/api/projects/{id}/plan` | Full drill-down: modules → phases → tasks → checklists |
+| GET/POST | `/api/phases` | List / create phases |
+| POST | `/api/phases/{id}/modules` | Add a module (auto-generates its activity plan) |
+| GET | `/api/phases/{id}/plan` | Full drill-down: modules → activities → checklists |
 | GET | `/api/modules` | Module catalogue |
-| PUT | `/api/tasks/{id}` | Update a task (status change rolls progress up) |
-| POST | `/api/tasks/{id}/checklist` | Add a checklist item |
+| PUT | `/api/activities/{id}` | Update an activity (status change rolls progress up) |
+| POST | `/api/activities/{id}/checklist` | Add a checklist item |
 | GET | `/api/dashboard/summary` | Management dashboard cards |
+| GET | `/api/search` | Global search |
+| GET | `/api/audit-logs` | Audit trail |
+| GET | `/api/recycle-bin` | Soft-deleted items pending restore |
 
-## Next Steps
+See `docs/IMS_Architecture_and_Flows.md` for the full endpoint list.
 
-- Risk Register & Issue Tracker
-- Meeting / Communication log & Document repository
-- Dependency engine, Gantt timeline & Kanban board
-- Notifications & Client Portal
+## Known Gaps / Next Steps
+
+- Activity dependency enforcement (schema exists, not wired to any API/UI)
+- Document repository / file uploads, notifications, client portal
+- Automated tests and CI
+- `SECRET_KEY` must be overridden via environment variable before any non-local deployment — it currently falls back to a placeholder value
+- List endpoints (clients/phases/activities) have no pagination yet

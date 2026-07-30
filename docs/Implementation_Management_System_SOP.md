@@ -2,30 +2,27 @@
 
 ## Implementation Management System (IMS)
 
-**Document Version:** 1.0\
+**Document Version:** 2.0\
 **Department:** Customer Success\
 **Owner:** Customer Success Team\
-**Purpose:** To standardize the planning, execution, tracking, and
-completion of implementation projects for all clients.
+**Purpose:** To standardize the planning, execution, and tracking of implementation projects for all clients using the IMS application.
+
+> This revision describes only what the IMS application currently supports. Business-process items with no corresponding system feature (risk/issue tracking, document repository, notifications) have been removed; see `docs/IMS_PRD.md` §7 for the list of known gaps if these are needed later.
 
 ------------------------------------------------------------------------
 
 # 1. Purpose
 
-The purpose of the Implementation Management System (IMS) is to provide
-a centralized platform for managing client implementations from project
-initiation through go-live and post-implementation support.
+The purpose of the Implementation Management System (IMS) is to provide a centralized platform for managing client implementations from kickoff through go-live.
 
 The system aims to:
 
--   Standardize implementation processes across all clients.
--   Improve project visibility.
--   Track project timelines and milestones.
--   Reduce implementation delays.
--   Improve accountability.
--   Provide management with real-time project status.
--   Maintain complete project documentation.
--   Monitor implementation progress and product adoption.
+- Standardize implementation processes across all clients.
+- Improve project visibility.
+- Track implementation timelines and progress.
+- Reduce implementation delays.
+- Improve accountability via role-based access and a full audit trail.
+- Provide management with real-time implementation status.
 
 ------------------------------------------------------------------------
 
@@ -33,412 +30,263 @@ The system aims to:
 
 This SOP applies to:
 
--   New Client Implementations
--   Existing Client Enhancements
--   Feature Rollouts
--   Module Implementations
--   Product Upgrades
--   Data Migration Projects
--   Training Projects
--   Go-Live Activities
+- New Client Implementations
+- Existing Client Enhancements
+- Module Implementations
+- Go-Live Activities
 
 Applicable Teams:
 
--   Customer Success
--   Implementation Team
--   Product Team
--   Support Team
--   Data Team
--   Management
+- Customer Success
+- Implementation Team
+- Data Team
+- Support Team
+- Management
 
 ------------------------------------------------------------------------
 
 # 3. Objectives
 
-The system shall enable users to:
+The system enables users to:
 
--   Create and manage client projects.
--   Manage multiple modules within a project.
--   Track implementation phases.
--   Monitor task completion.
--   Manage dependencies.
--   Record client communications.
--   Track issues and risks.
--   Upload implementation documents.
--   Generate project reports.
--   Measure implementation performance.
+- Create and manage client records.
+- Manage multiple implementation phases per client.
+- Add modules to a phase and track their activities.
+- Monitor activity completion and checklist items.
+- Record client meetings and communications.
+- View real-time progress and delay dashboards.
+- Maintain a full audit trail of every change.
+- Recover accidentally deleted records within a 12-hour window.
 
 ------------------------------------------------------------------------
 
-# 4. Project Hierarchy
+# 4. Implementation Hierarchy
 
-Client → Project → Module → Phase → Task → Checklist → Completion
+```
+Client → Phase → Module → Activity → Checklist → Completion
+```
 
 Example:
 
--   Client: ABC University
--   Project: Academic ERP Implementation
--   Modules:
-    -   Admissions
-    -   Attendance
-    -   Finance
-    -   LMS
--   Attendance Module
-    -   Phase: Configuration
-    -   Task: Configure Attendance Rules
-    -   Checklist:
-        -   Student Master Uploaded
-        -   Faculty Mapping Completed
-        -   Timetable Imported
-        -   Attendance Settings Configured
+- Client: ABC University
+- Phase: Academic ERP Implementation
+- Modules added to the phase:
+  - Kickoff *(added automatically to every new phase)*
+  - Admission Management
+  - Academic Management System
+  - Learning Management System
+- Academic Management System module
+  - Activity: Time-table Management
+  - Checklist:
+    - Curriculum data received
+    - Time-table configured
+    - Demo completed with client
 
 ------------------------------------------------------------------------
 
-# 5. Project Lifecycle
+# 5. Implementation Lifecycle
 
-## Stage 1 -- Client Creation
+## Stage 1 — Client Creation
 
-Required Information:
+Captured fields:
 
--   Client Name
--   Institution Type
--   CRM ID
--   Customer Success Manager
--   Project Manager
--   Sales Owner
--   Contract Start Date
--   Contract End Date
--   Expected Go-Live
--   Priority
--   Current Status
+- Client Name, Institution Type, CRM ID
+- Customer Success Manager, Project Manager, Relationship Manager
+- Sales Owner
+- Contract Start / End Date, Expected Go-Live Date
+- Priority, Status
+- Tracker fields: instance link, region, implementation state, new/recurring, kickoff meeting date, agreed go-live date, billing date, tracker link, master data status, total users
 
-## Stage 2 -- Project Creation
+## Stage 2 — Phase Creation
 
-Project Types:
+A phase is the top-level implementation engagement for a client (e.g. "Academic ERP Implementation", "Finance Module Rollout").
 
--   New Implementation
--   Additional Module
--   Migration
--   Upgrade
--   Feature Rollout
--   Integration
--   Custom Development
+Phase details: name, description, type (free text, e.g. New Implementation, Additional Module, Migration, Upgrade), status, start/end date.
 
-Project Details:
+**Creating a phase automatically adds a "Kickoff" module** with its standard activities (Requirement Gathering, Stakeholder Identification, Scope Confirmation, Timeline Approval) — no manual setup needed.
 
--   Project Name
--   Description
--   Start Date
--   End Date
--   Expected Duration
--   Project Status
--   Overall Progress
+## Stage 3 — Module Selection
 
-## Stage 3 -- Module Selection
+The module catalogue (seeded on first startup) currently contains:
 
-Example Modules:
+| Module | Category |
+|--------|----------|
+| Kickoff | Onboarding |
+| Master Data Management | Core |
+| Member Records (student, faculty, staff, parent) | Core |
+| Admission Management | Academic |
+| Institutional Calendar | Academic |
+| Academic Management System | Academic |
+| Examination Management System | Academic |
+| Learning Management System | Academic |
+| Finance Management | Administrative |
+| Hostel Management | Administrative |
+| Transportation Management | Administrative |
+| HR Management | Administrative |
+| Infrastructure Management | Infrastructure |
+| Feedback Management | Engagement |
+| Placement and Internship | Engagement |
+| Campus Help Center | Support |
+| Koha | Integration |
+| Booth Management | Other |
 
--   Admissions
--   Attendance
--   Academics
--   Finance
--   Examination
--   Hostel
--   Transport
--   Library
--   LMS
--   Feedback
--   Placement
--   Research
--   Alumni
--   Campus Help Centre
--   Analytics
-
-Selecting modules automatically generates the implementation plan.
+Administrators can add custom modules to the catalogue. **Adding a module to a phase automatically generates its predefined activities** (see `backend/app/services/templates.py` for the full list per module).
 
 ------------------------------------------------------------------------
 
-# 6. Standard Module Implementation Template
+# 6. Activity Management
 
-1.  **Kickoff**
-    -   Requirement Gathering
-    -   Stakeholder Identification
-    -   Scope Confirmation
-    -   Timeline Approval
-2.  **Configuration**
-    -   System Configuration
-    -   User Roles
-    -   Permissions
-    -   Academic Setup
-3.  **Data Preparation**
-    -   Student Import
-    -   Faculty Import
-    -   Programme Mapping
-    -   Timetable Upload
-4.  **Testing**
-    -   Functional Testing
-    -   UAT
-    -   Issue Resolution
-5.  **Training**
-    -   Admin Training
-    -   Faculty Training
-    -   Student Orientation
-6.  **Go-Live**
-    -   Production Enablement
-    -   Monitoring
-7.  **Hypercare**
-    -   Daily Monitoring
-    -   Bug Fixes
-    -   Client Support
+Each activity includes:
+
+- Title, Description
+- Module & Phase (via the module instance it belongs to)
+- Owner, Reviewer
+- Priority, Status
+- Start Date, Due Date
+- Estimated Hours, Actual Hours
+- Progress %
+- Checklist items
+- Client SPOC name / email / phone
+- UAT Proposed (yes/no)
+- Delay Reason, Client Response, Internal Response
+- External Link, Category, Proposed Timeline, Module Status
+
+Activities can be manually reordered within a module (drag-and-drop) and can have sub-activities via a parent/child link.
 
 ------------------------------------------------------------------------
 
-# 7. Task Management
+# 7. Activity Status & Priority
 
-Each task includes:
+Status is a free-text field; the conventions in use are:
 
--   Task Name
--   Description
--   Module
--   Phase
--   Assigned To
--   Reviewer
--   Priority
--   Start Date
--   Due Date
--   Estimated Hours
--   Actual Hours
--   Status
--   Dependency
--   Completion %
--   Attachments
--   Comments
--   Approval Status
+- Not Started
+- In Progress
+- Waiting for Client
+- Waiting for Internal Team
+- Blocked
+- Under Testing
+- Completed
+- Cancelled
+
+Marking an activity **Completed** sets its progress to 100% automatically; cancelled activities are excluded from module/phase progress averages.
+
+Priority: Critical, High, Medium, Low.
 
 ------------------------------------------------------------------------
 
-# 8. Task Status
+# 8. Checklist Management
 
--   Not Started
--   In Progress
--   Waiting for Client
--   Waiting for Internal Team
--   Blocked
--   Under Testing
--   Completed
--   Cancelled
+Example — "Time-table Management" activity:
 
-------------------------------------------------------------------------
+- [ ] Curriculum data received
+- [ ] Time-table configured
+- [ ] Demo completed with client
 
-# 9. Priority
-
--   Critical
--   High
--   Medium
--   Low
+Checklist completion is a manual tracking aid and does not affect the activity's progress percentage.
 
 ------------------------------------------------------------------------
 
-# 10. Dependencies
+# 9. Meeting & Communication Log
 
-Example:
+Each meeting record (attached to a phase) captures:
 
-Student Import → Faculty Import → Subject Mapping → Timetable →
-Configuration → Testing → Go-Live
+- Title, Meeting Date
+- Participants
+- Discussion (Minutes of Meeting)
+- Decisions
+- Action Items
+- Next Follow-up Date
 
-------------------------------------------------------------------------
-
-# 11. Checklist Management
-
-Example:
-
-Configure Attendance
-
--   [ ] Attendance Policy Created
--   [ ] Academic Calendar Uploaded
--   [ ] Holidays Configured
--   [ ] Threshold Configured
--   [ ] Testing Completed
+All meetings for a client can be viewed rolled up across its phases from the client record.
 
 ------------------------------------------------------------------------
 
-# 12. Risk Management
+# 10. Dashboards
 
-Fields:
+## Management Dashboard
 
--   Risk ID
--   Description
--   Impact
--   Probability
--   Owner
--   Mitigation Plan
--   Status
+- Total Clients
+- Total Phases
+- Active Phases (Not Started / In Progress / On Hold)
+- Delayed Phases (past end date, not Completed/Cancelled)
+- Go-Live This Month
 
-------------------------------------------------------------------------
+Filterable by client status, region, phase status, and owner (CSM/PM).
 
-# 13. Issue Management
+## Global Search
 
-Fields:
-
--   Issue ID
--   Module
--   Severity
--   Description
--   Assigned To
--   Resolution
--   Status
+A single search box (top navigation) searches clients, phases, activities, and users at once.
 
 ------------------------------------------------------------------------
 
-# 14. Communication Log
+# 11. User Roles
 
-Capture:
+- Administrator
+- Customer Success Manager
+- Project Manager
+- Implementation Executive
+- Data Team
+- Support Team
+- Management
+- Client *(role exists for future client-facing access; no client portal UI exists yet)*
 
--   Date
--   Participants
--   Discussion
--   Decisions
--   Action Items
--   Next Follow-up
-
-------------------------------------------------------------------------
-
-# 15. Document Management
-
-Maintain:
-
--   Requirement Documents
--   MoM
--   Configuration Files
--   Data Templates
--   Training Material
--   Testing Reports
--   Sign-off Documents
+Access is enforced by a fine-grained permission matrix (not just role name) — see §12.
 
 ------------------------------------------------------------------------
 
-# 16. Dashboards
+# 12. Roles & Permissions
 
-## Management
-
--   Total Clients
--   Active Projects
--   Delayed Projects
--   Upcoming Go-Lives
--   Completion %
--   Risks
--   Issues
-
-## Project
-
--   Timeline
--   Module Progress
--   Milestones
--   Pending Approvals
-
-## Resource
-
--   Assigned Tasks
--   Pending Tasks
--   Completed Tasks
--   Workload
+Permissions are individual codes (e.g. `client.create`, `activity.delete`) grouped by category: System, Users, Clients, Phases, Modules, Activities, Meetings. Each role is mapped to a set of permission codes, editable by an Administrator via the Role Permissions screen (the Administrator role itself is fixed and cannot be edited).
 
 ------------------------------------------------------------------------
 
-# 17. Notifications
+# 13. Automation
 
-Notify for:
+The system automatically:
 
--   Task Assignment
--   Due Today
--   Overdue
--   Blocked Tasks
--   Completed Milestones
--   Go-Live Readiness
-
-------------------------------------------------------------------------
-
-# 18. User Roles
-
--   Administrator
--   Customer Success Manager
--   Project Manager
--   Team Member
--   Management
--   Client (View Only)
+- Adds a Kickoff module with default activities to every new phase.
+- Generates a module's predefined activities when it's added to a phase.
+- Recalculates progress: Activity → Module → Phase, in real time on every activity change.
+- Marks a client's implementation state as "Go Live" once every activity across the client is completed.
+- Records an audit log entry for every create, update, delete, and restore action.
 
 ------------------------------------------------------------------------
 
-# 19. Automation
+# 14. Phase Closure
 
-Automatically:
+Manual checklist before closing a phase:
 
--   Generate module templates
--   Create tasks
--   Calculate progress
--   Identify overdue tasks
--   Send reminders
--   Generate weekly summaries
+- All activities completed or explicitly cancelled
+- Client sign-off obtained (recorded via a meeting entry)
+- Training completed
+- Phase status set to Completed
 
 ------------------------------------------------------------------------
 
-# 20. Project Closure
+# 15. Success Criteria
 
-Checklist:
-
--   All tasks completed
--   Client sign-off
--   Training completed
--   Documentation uploaded
--   Issues resolved
--   Hypercare completed
--   Go-Live successful
+The IMS should provide standardized implementation tracking, real-time visibility into progress and delays, role-based accountability, and a full audit trail with recoverable deletes.
 
 ------------------------------------------------------------------------
 
-# 21. KPIs
+# Appendix A — Database Entities
 
--   Project Completion Rate
--   On-Time Delivery
--   Average Implementation Duration
--   Resource Utilization
--   Issue Resolution Time
--   Module Completion
--   CSAT
--   Product Adoption
-
-------------------------------------------------------------------------
-
-# 22. Success Criteria
-
-The IMS should provide standardized implementation management, complete
-project visibility, accountability, auditability, and successful client
-onboarding.
+- Clients
+- Phases
+- Modules
+- Phase Modules
+- Activities
+- Checklist Items
+- Activity Dependencies *(schema only — not yet used by any API or UI)*
+- Meetings
+- Users
+- Roles
+- Permissions / Role Permissions
+- Activity Logs
 
 ------------------------------------------------------------------------
 
-# Appendix A -- Database Entities
-
--   Clients
--   Projects
--   Modules
--   Templates
--   Phases
--   Tasks
--   Checklists
--   Dependencies
--   Documents
--   Meetings
--   Risks
--   Issues
--   Notifications
--   Users
--   Roles
--   Activity Logs
-
-------------------------------------------------------------------------
-
-# Appendix B -- Workflow
+# Appendix B — Workflow
 
 Contract Signed
 
@@ -448,27 +296,15 @@ Client Created
 
 ↓
 
-Project Created
+Phase Created (Kickoff module auto-generated)
 
 ↓
 
-Modules Selected
+Modules Selected (each auto-generates its activity plan)
 
 ↓
 
-Implementation Plan Generated
-
-↓
-
-Execution
-
-↓
-
-Testing
-
-↓
-
-Training
+Execution (activities updated, checklists tracked, meetings logged)
 
 ↓
 
@@ -476,12 +312,8 @@ Go-Live
 
 ↓
 
-Hypercare
-
-↓
-
 Client Sign-off
 
 ↓
 
-Project Closed
+Phase Closed

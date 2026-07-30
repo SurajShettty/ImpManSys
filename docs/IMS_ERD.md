@@ -2,7 +2,16 @@
 
 ## Overview
 
-This ERD reflects the current IMS schema as defined in `backend/app/models.py`. It includes the core implementation hierarchy, user/role management, the permission matrix, audit logging, and soft-delete support.
+This ERD reflects the current IMS schema as defined in `backend/app/models.py`. The implementation hierarchy is:
+
+```
+Client → Phase → PhaseModule → Activity → ChecklistItem
+                        │
+                    (Module catalogue)
+Phase → Meeting (meeting & communication log, attached directly to a phase)
+```
+
+It also covers user/role management, the fine-grained permission matrix, audit logging, and soft-delete support.
 
 ---
 
@@ -18,17 +27,17 @@ erDiagram
     USERS ||--o{ CLIENTS : managed_as_csm
     USERS ||--o{ CLIENTS : managed_as_pm
     USERS ||--o{ CLIENTS : managed_as_rm
-    CLIENTS ||--o{ PROJECTS : has
-    PROJECTS ||--o{ PROJECT_MODULES : contains
-    PROJECTS ||--o{ MEETINGS : records
-    MODULES ||--o{ PROJECT_MODULES : selected_in
-    PROJECT_MODULES ||--o{ PHASES : generates
-    PHASES ||--o{ TASKS : contains
-    TASKS ||--o{ CHECKLIST_ITEMS : has
-    TASKS ||--o{ TASK_DEPENDENCIES : depends_on
-    TASKS ||--o{ TASK_DEPENDENCIES : dependency_of
-    USERS ||--o{ TASKS : owns
-    USERS ||--o{ TASKS : reviews
+    CLIENTS ||--o{ PHASES : has
+    PHASES ||--o{ PHASE_MODULES : contains
+    PHASES ||--o{ MEETINGS : records
+    MODULES ||--o{ PHASE_MODULES : selected_in
+    PHASE_MODULES ||--o{ ACTIVITIES : contains
+    ACTIVITIES ||--o{ CHECKLIST_ITEMS : has
+    ACTIVITIES ||--o{ ACTIVITY_DEPENDENCIES : depends_on
+    ACTIVITIES ||--o{ ACTIVITY_DEPENDENCIES : dependency_of
+    ACTIVITIES ||--o{ ACTIVITIES : sub_activity_of
+    USERS ||--o{ ACTIVITIES : owns
+    USERS ||--o{ ACTIVITIES : reviews
 ```
 
 ---
@@ -40,7 +49,7 @@ erDiagram
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| name | varchar(50) UQ | e.g. Administrator, Project Manager, Client |
+| name | varchar(50) UQ | Administrator, Customer Success Manager, Project Manager, Implementation Executive, Data Team, Support Team, Management, Client |
 | description | varchar(255) | |
 
 ### `permissions`
@@ -48,10 +57,10 @@ erDiagram
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| code | varchar(80) UQ | `resource.action`, e.g. `client.create`, `task.delete` |
+| code | varchar(80) UQ | `resource.action`, e.g. `client.create`, `activity.delete` |
 | name | varchar(120) | Human-readable label |
 | description | varchar(255) | |
-| category | varchar(50) | e.g. Clients, Tasks, System |
+| category | varchar(50) | System, Users, Clients, Phases, Modules, Activities, Meetings |
 
 ### `role_permissions`
 
@@ -83,7 +92,7 @@ erDiagram
 | id | integer PK | |
 | name | varchar(150) | |
 | crm_id | varchar(50) | External CRM reference |
-| institution_type | varchar(100) | University / College / School |
+| institution_type | varchar(100) | |
 | status | varchar(30) | Active, On Hold, Completed, Churned |
 | priority | varchar(20) | Critical, High, Medium, Low |
 | contract_start | date | |
@@ -94,21 +103,23 @@ erDiagram
 | rm_id | integer FK → users | Relationship Manager |
 | sales_owner | varchar(100) | |
 | instance_link | varchar(500) | Link to client's live instance |
-| region | varchar(50) | North / South / East / West / Central |
-| implementation_state | varchar(50) | e.g. Go Live, In Progress |
+| region | varchar(50) | |
+| implementation_state | varchar(50) | Set to `"Go Live"` automatically when every activity across the client is completed |
 | new_recurring | varchar(20) | New / Recurring |
-| kickoff_meeting_date | date | Date of project kickoff |
+| kickoff_meeting_date | date | |
 | agreed_go_live_date | date | Contractually agreed go-live |
 | billing_date | date | Login credentials sent / billing start |
-| tracker_link | varchar(500) | External tracker (Google Sheets, etc.) |
-| master_data_status | varchar(100) | Status of master data setup |
-| total_users | integer | Total client users |
+| tracker_link | varchar(500) | External tracker (e.g. Google Sheets) |
+| master_data_status | varchar(100) | |
+| total_users | integer | |
 | is_deleted | boolean | Soft-delete flag |
 | deleted_at | timestamp | |
 | created_at | timestamp | |
 | updated_at | timestamp | |
 
-### `projects`
+### `phases`
+
+A client implementation phase (this replaced the earlier "Project" concept — see `models.py` docstring).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -116,11 +127,11 @@ erDiagram
 | client_id | integer FK → clients | |
 | name | varchar(150) | |
 | description | text | |
-| type | varchar(50) | New Implementation, Additional Module, Migration, etc. |
-| status | varchar(30) | Not Started, In Progress, On Hold, Completed, Cancelled |
+| type | varchar(50) | Default `"New Implementation"` |
+| status | varchar(30) | Not Started, In Progress, On Hold, Completed, Cancelled — derived automatically from module progress unless manually set to On Hold/Cancelled |
 | start_date | date | |
 | end_date | date | |
-| progress | float | 0–100, derived from modules |
+| progress | float | 0–100, derived from `phase_modules` |
 | is_deleted | boolean | Soft-delete flag |
 | deleted_at | timestamp | |
 | created_at | timestamp | |
@@ -128,58 +139,64 @@ erDiagram
 
 ### `modules`
 
+Master catalogue of implementable modules (Admissions, Finance, LMS, etc.), seeded on startup.
+
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| name | varchar(100) UQ | Admissions, Finance, LMS, etc. |
-| category | varchar(50) | Academic, Administrative, Engagement, etc. |
+| name | varchar(100) UQ | |
+| category | varchar(50) | Onboarding, Core, Academic, Administrative, Infrastructure, Engagement, Support, Other, Integration |
 | description | varchar(255) | |
 | is_deleted | boolean | |
 | deleted_at | timestamp | |
 
-### `project_modules`
+### `phase_modules`
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | integer PK | |
-| project_id | integer FK → projects | |
-| module_id | integer FK → modules | |
-| status | varchar(30) | Not Started, In Progress, etc. |
-| progress | float | 0–100, derived from tasks |
-| is_deleted | boolean | |
-| deleted_at | timestamp | |
-| created_at | timestamp | |
-
-### `phases`
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | integer PK | |
-| project_module_id | integer FK → project_modules | |
-| name | varchar(100) | e.g. Discovery, Configuration, Training |
-| sequence | integer | Display order |
-| is_deleted | boolean | |
-| deleted_at | timestamp | |
-
-### `tasks`
+A module selected for a specific phase — an "instance" of a catalogue module. Adding one auto-generates its default activities from `MODULE_ACTIVITY_TEMPLATES`.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
 | phase_id | integer FK → phases | |
-| parent_task_id | integer FK → tasks | Nullable; supports sub-tasks |
+| module_id | integer FK → modules | |
+| status | varchar(30) | Not Started, In Progress, Completed — derived from activity progress |
+| progress | float | 0–100, derived from `activities` (average, excluding Cancelled) |
+| is_deleted | boolean | |
+| deleted_at | timestamp | |
+| created_at | timestamp | |
+
+### `activities`
+
+A single implementation activity within a module (this replaced the earlier "Task" concept).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer PK | |
+| phase_module_id | integer FK → phase_modules | |
+| parent_activity_id | integer FK → activities | Nullable; supports sub-activities |
 | owner_id | integer FK → users | |
 | reviewer_id | integer FK → users | |
 | title | varchar(200) | |
 | description | text | |
 | priority | varchar(20) | Critical, High, Medium, Low |
-| status | varchar(30) | Not Started, In Progress, Completed, Cancelled, etc. |
+| status | varchar(30) | Not Started, In Progress, Completed, Cancelled, etc. (free text) |
 | start_date | date | |
 | due_date | date | |
 | estimated_hours | float | |
 | actual_hours | float | |
 | progress | float | 0–100 |
-| sequence | integer | Manual drag-and-drop order |
+| sequence | integer | Manual/drag-and-drop display order |
+| client_spoc | varchar(150) | Client-side single point of contact |
+| client_spoc_email | varchar(255) | |
+| client_spoc_phone | varchar(50) | |
+| uat_proposed | boolean | |
+| delay_reason | text | |
+| client_response | text | |
+| internal_response | text | |
+| external_link | varchar(500) | |
+| category | varchar(50) | Default `"Regular"` |
+| proposed_timeline | date | |
+| module_status | varchar(100) | Free-text status label mapped from the manual Excel project plan |
 | is_deleted | boolean | |
 | deleted_at | timestamp | |
 | created_at | timestamp | |
@@ -190,26 +207,32 @@ erDiagram
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| task_id | integer FK → tasks | |
+| activity_id | integer FK → activities | |
 | item | varchar(255) | Description |
 | completed | boolean | |
 | is_deleted | boolean | |
 | deleted_at | timestamp | |
 
-### `task_dependencies`
+Checklist completion is a manual tracking aid — it does **not** feed into activity/module/phase progress calculations.
+
+### `activity_dependencies`
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| task_id | integer FK → tasks | The task that has a dependency |
-| depends_on_task_id | integer FK → tasks | The prerequisite task |
+| activity_id | integer FK → activities | The activity that has a dependency |
+| depends_on_activity_id | integer FK → activities | The prerequisite activity |
+
+> This table exists in the schema but is **not yet exposed** through any API endpoint or the frontend — there is no way to create or enforce a dependency today.
 
 ### `meetings`
 
+Meeting & communication log (MoMs, decisions, action items), attached directly to a phase.
+
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| project_id | integer FK → projects | |
+| phase_id | integer FK → phases | |
 | title | varchar(200) | |
 | meeting_date | date | |
 | participants | varchar(255) | Comma-separated names |
@@ -229,8 +252,8 @@ erDiagram
 |--------|------|-------|
 | id | integer PK | |
 | user_id | integer FK → users | Nullable |
-| entity | varchar(50) | client, project, task, meeting, etc. |
-| action | varchar(50) | create, update, delete, restore |
+| entity | varchar(50) | client, phase, phase_module, activity, meeting, user, role, etc. |
+| action | varchar(50) | create, update, delete, restore, reorder |
 | timestamp | timestamp | |
 | details | text | Human-readable description |
 
@@ -241,22 +264,18 @@ erDiagram
 | Parent | Child | Type | Notes |
 |--------|-------|------|-------|
 | roles | users | 1:N | A user has one role |
-| roles | role_permissions | M:N via `role_permissions` | Maps roles to fine-grained permissions |
+| roles | role_permissions | M:N via `role_permissions` | Fine-grained permission mapping |
 | permissions | role_permissions | M:N via `role_permissions` | |
-| users | clients | 1:N (csm_id) | CSM assignment |
-| users | clients | 1:N (pm_id) | PM assignment |
-| users | clients | 1:N (rm_id) | Relationship Manager assignment |
-| clients | projects | 1:N | |
-| projects | project_modules | 1:N | Modules selected for a project |
-| modules | project_modules | 1:N | Master catalogue reused across projects |
-| project_modules | phases | 1:N | Auto-generated implementation plan |
-| phases | tasks | 1:N | |
-| tasks | checklist_items | 1:N | |
-| tasks | task_dependencies | 1:N | Self-referencing task prerequisites |
-| tasks | tasks | 1:N (parent_task_id) | Sub-task hierarchy |
-| users | tasks | 1:N (owner_id) | |
-| users | tasks | 1:N (reviewer_id) | |
-| projects | meetings | 1:N | Meeting & communication log |
+| users | clients | 1:N (csm_id / pm_id / rm_id) | CSM, PM, and Relationship Manager assignment |
+| clients | phases | 1:N | Cascade soft-delete |
+| phases | phase_modules | 1:N | Modules selected for a phase |
+| modules | phase_modules | 1:N | Master catalogue reused across phases |
+| phase_modules | activities | 1:N | Auto-generated from the module's activity template |
+| activities | checklist_items | 1:N | |
+| activities | activity_dependencies | 1:N | Self-referencing (schema only, not yet used) |
+| activities | activities | 1:N (parent_activity_id) | Sub-activity hierarchy |
+| users | activities | 1:N (owner_id / reviewer_id) | |
+| phases | meetings | 1:N | Meeting & communication log |
 | users | meetings | 1:N (created_by) | |
 | users | activity_logs | 1:N | Audit trail |
 
@@ -264,6 +283,10 @@ erDiagram
 
 ## Soft Delete Behaviour
 
-All core entities (`users`, `clients`, `projects`, `project_modules`, `phases`, `tasks`, `checklist_items`, `modules`, `meetings`) use soft deletes via `is_deleted` + `deleted_at`. When a parent is deleted, child rows are typically soft-deleted in the same transaction (e.g. deleting a client soft-deletes its projects, modules, phases, tasks, and checklist items).
+All core entities (`users`, `clients`, `phases`, `phase_modules`, `activities`, `checklist_items`, `modules`, `meetings`) use soft deletes via `is_deleted` + `deleted_at`. Deleting a parent cascades a soft-delete to its children in the same transaction (e.g. deleting a client soft-deletes its phases, phase modules, activities, checklist items, and meetings).
 
-Deleted items remain in the `recycle_bin` for 12 hours and can be restored by users with `recycle_bin.restore` permission before the window expires.
+Deleted items remain visible in the Recycle Bin for **12 hours** and can be restored by users with the `recycle_bin.restore` permission before the window expires. Restoring an item requires its parent to not itself be deleted (e.g. you must restore a client before restoring one of its phases).
+
+---
+
+*For column-level notes and generation rules, see `docs/IMS_Database_Design.md`. For the full request/response flow, see `docs/IMS_Architecture_and_Flows.md`.*
