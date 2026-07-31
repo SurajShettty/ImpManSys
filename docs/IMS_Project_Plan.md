@@ -57,7 +57,7 @@ This plan tracks the work completed so far and requests approval for the remaini
 | Customer Success Manager (CSM) | Client relationships, meetings, phase coordination |
 | Project Manager (PM) | Phase planning, module/activity tracking |
 | Implementation Executive | Activity execution, checklist completion, updates |
-| Data Team / Support | Read-only access to relevant client/phase data |
+| Support Team | Read-only access to relevant client/phase data |
 | Client | Role exists in the system; no client-facing UI yet |
 
 ---

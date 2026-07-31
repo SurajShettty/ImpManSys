@@ -30,6 +30,22 @@
   --shadow: rgba(0, 0, 0, 0.1);
   --shadow-lg: rgba(0, 0, 0, 0.15);
 
+  /* Sequential blue ramp (dataviz palette, steps 100-700, low->high) - used by
+     the India state heatmap. */
+  --seq-0: #cde2fb;
+  --seq-1: #b7d3f6;
+  --seq-2: #9ec5f4;
+  --seq-3: #86b6ef;
+  --seq-4: #6da7ec;
+  --seq-5: #5598e7;
+  --seq-6: #3987e5;
+  --seq-7: #2a78d6;
+  --seq-8: #256abf;
+  --seq-9: #1c5cab;
+  --seq-10: #184f95;
+  --seq-11: #104281;
+  --seq-12: #0d366b;
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -62,6 +78,22 @@ body.dark {
 
   --shadow: rgba(0, 0, 0, 0.4);
   --shadow-lg: rgba(0, 0, 0, 0.5);
+
+  /* Same sequential ramp, reversed: low values recede toward the dark
+     surface, high values pop against it - no new hex values, just order. */
+  --seq-0: #0d366b;
+  --seq-1: #104281;
+  --seq-2: #184f95;
+  --seq-3: #1c5cab;
+  --seq-4: #256abf;
+  --seq-5: #2a78d6;
+  --seq-6: #3987e5;
+  --seq-7: #5598e7;
+  --seq-8: #6da7ec;
+  --seq-9: #86b6ef;
+  --seq-10: #9ec5f4;
+  --seq-11: #b7d3f6;
+  --seq-12: #cde2fb;
 
   background-color: var(--bg-body);
   color: var(--text-body);
@@ -481,9 +513,11 @@ body.dark .form-row input:focus {
   min-height: 5rem;
 }
 
-/* Pretty select dropdowns */
-.form-group select,
-.form-row select {
+/* Pretty select dropdowns (single-value only - a multi-select renders its own
+   listbox of rows, so the appearance:none + chevron treatment below would
+   break it) */
+.form-group select:not([multiple]),
+.form-row select:not([multiple]) {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -495,8 +529,8 @@ body.dark .form-row input:focus {
   cursor: pointer;
 }
 
-body.dark .form-group select,
-body.dark .form-row select {
+body.dark .form-group select:not([multiple]),
+body.dark .form-row select:not([multiple]) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%23a0a0a0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
@@ -522,6 +556,126 @@ body.dark .form-row select:focus {
   color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+/* Multi-select dropdown (checkbox list), used for CSM/RM assignment */
+.multiselect {
+  position: relative;
+}
+
+.multiselect-trigger {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 2.5rem 0.5rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-body);
+  font-size: 1rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%236c757d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.dark .multiselect-trigger {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3.5 5.25L7 8.75L10.5 5.25' stroke='%23a0a0a0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.multiselect-trigger:hover,
+.multiselect.open .multiselect-trigger {
+  border-color: var(--primary-red);
+}
+
+.multiselect.open .multiselect-trigger {
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.12);
+  outline: none;
+}
+
+body.dark .multiselect.open .multiselect-trigger {
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.25);
+}
+
+.multiselect-value {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiselect-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.35rem;
+  z-index: 1000;
+}
+
+body.dark .multiselect-menu {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.multiselect-search {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  margin-bottom: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-body);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.multiselect-search:focus {
+  border-color: var(--primary-red);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.12);
+}
+
+body.dark .multiselect-search:focus {
+  box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.25);
+}
+
+.multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-body);
+}
+
+.multiselect-option:hover {
+  background: var(--bg-hover);
+}
+
+.multiselect-option input[type="checkbox"] {
+  min-height: auto;
+  width: auto;
+  cursor: pointer;
+}
+
+.multiselect-empty {
+  padding: 0.5rem;
+  margin: 0;
+  text-align: center;
 }
 
 .form-row input[type="checkbox"] {
@@ -592,6 +746,42 @@ body.dark .form-row select:focus {
 .table a {
   color: var(--primary-red);
   text-decoration: none;
+  font-weight: 500;
+}
+
+/* Horizontally-scrollable table variant: columns keep their natural width and
+   don't wrap, so the table can grow wider than its card and scroll instead of
+   squishing every column. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll .table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.table-scroll .table th,
+.table-scroll .table td {
+  white-space: nowrap;
+}
+
+.table-scroll .table th:first-child,
+.table-scroll .table td:first-child {
+  min-width: 240px;
+}
+
+.client-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.table a.instance-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-heading);
   font-weight: 500;
 }
 
@@ -1926,4 +2116,85 @@ body.dark .theme-toggle::after {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+/* India state heatmap (Dashboard) */
+.india-map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.india-map-canvas {
+  position: relative;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.india-map {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.india-map-state {
+  stroke: var(--bg-card);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: opacity 0.1s ease;
+}
+
+.india-map-state:hover {
+  opacity: 0.8;
+  stroke: var(--primary-red);
+}
+
+.india-map-tooltip {
+  position: absolute;
+  transform: translate(-50%, -110%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px var(--shadow-lg);
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.82rem;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.india-map-tooltip strong {
+  color: var(--text-heading);
+}
+
+.india-map-tooltip span {
+  color: var(--text-muted);
+}
+
+.india-map-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.india-map-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.india-map-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+}
+
+.india-map-table {
+  max-width: 420px;
+  margin: 0 auto;
 }

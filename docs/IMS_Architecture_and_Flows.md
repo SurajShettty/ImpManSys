@@ -161,7 +161,7 @@ npm run dev
 
 On every startup, `seed_data()` idempotently creates/updates:
 
-**Roles:** Administrator, Customer Success Manager, Project Manager, Implementation Executive, Data Team, Support Team, Management, Client.
+**Roles:** Administrator, Customer Success Manager, Relationship Manager, Project Manager, Implementation Executive, Support Team, Management, Client.
 
 **Permissions:** fine-grained codes in the form `resource.action`, grouped into categories System, Users, Clients, Phases, Modules, Activities, Meetings (full list in `backend/app/utils/seed.py`). The Administrator role always has every permission; other roles get a curated subset.
 

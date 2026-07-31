@@ -4,8 +4,8 @@ import api from '../api/client'
 import { Pagination, pageRangeText } from '../components/ui'
 
 const PAGE_SIZE = 20
-const TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue' }
-const TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned' }
+const TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue', client_assigned: 'green' }
+const TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned', client_assigned: 'New client' }
 
 export default function Notifications() {
   const navigate = useNavigate()
@@ -40,6 +40,7 @@ export default function Notifications() {
       }
     }
     if (n.phase_id) navigate(`/phases/${n.phase_id}`)
+    else if (n.client_id) navigate(`/clients/${n.client_id}`)
   }
 
   const markAllRead = async () => {

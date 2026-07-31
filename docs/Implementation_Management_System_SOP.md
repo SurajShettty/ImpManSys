@@ -39,7 +39,6 @@ Applicable Teams:
 
 - Customer Success
 - Implementation Team
-- Data Team
 - Support Team
 - Management
 
@@ -223,9 +222,9 @@ A single search box (top navigation) searches clients, phases, activities, and u
 
 - Administrator
 - Customer Success Manager
+- Relationship Manager
 - Project Manager
 - Implementation Executive
-- Data Team
 - Support Team
 - Management
 - Client *(role exists for future client-facing access; no client portal UI exists yet)*

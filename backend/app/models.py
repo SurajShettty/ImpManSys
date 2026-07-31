@@ -85,23 +85,28 @@ class ActivityLog(Base):
 
 
 class Notification(Base):
-    """A personal alert for an activity owner: due today, overdue, or assigned.
+    """A personal alert: activity due-today/overdue/assigned, or client_assigned
+    (added as a client's CSM/RM). Exactly one of activity_id/client_id is set,
+    matching the notification's type.
 
     Due-today/overdue rows are time-derived, so they're upserted/resolved by
     services.notifications.sync_due_notifications() on every read rather than
-    on a schedule (this app has no background job runner). Assigned rows are
-    event-derived and created directly when an activity's owner changes.
+    on a schedule (this app has no background job runner). Assigned/
+    client_assigned rows are event-derived and created directly when an
+    activity's owner or a client's csm/rm list changes.
     """
 
     __tablename__ = "notifications"
     __table_args__ = (
         UniqueConstraint("user_id", "activity_id", "type", name="uq_notification_user_activity_type"),
+        UniqueConstraint("user_id", "client_id", "type", name="uq_notification_user_client_type"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=False, index=True)
-    type = Column(String(20), nullable=False)  # due_today / overdue / assigned
+    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
+    type = Column(String(20), nullable=False)  # due_today / overdue / assigned / client_assigned
     message = Column(String(255), nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -109,12 +114,33 @@ class Notification(Base):
 
     user = relationship("User", foreign_keys=[user_id])
     activity = relationship("Activity", foreign_keys=[activity_id])
+    client = relationship("Client", foreign_keys=[client_id])
 
 
 # ---------------------------------------------------------------------------
 # Implementation hierarchy: Client -> Phase -> Module -> Activity
 # Reference: docs/IMS_Database_Design.md and docs/Implementation_Management_System_SOP.md
 # ---------------------------------------------------------------------------
+
+
+class ClientCSM(Base):
+    """A Customer Success Manager assigned to a client (many-to-many)."""
+
+    __tablename__ = "client_csms"
+
+    client_id = Column(Integer, ForeignKey("clients.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+
+class ClientRM(Base):
+    """A Relationship Manager assigned to a client (many-to-many)."""
+
+    __tablename__ = "client_rms"
+
+    client_id = Column(Integer, ForeignKey("clients.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
 
 class Client(Base):
@@ -129,14 +155,13 @@ class Client(Base):
     contract_start = Column(Date, nullable=True)
     contract_end = Column(Date, nullable=True)
     go_live_date = Column(Date, nullable=True)
-    csm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Customer Success Manager
     pm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Project Manager
-    rm_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Relationship Manager
     sales_owner = Column(String(100), nullable=True)
 
     # Client tracker fields mapped from the manual Excel tracker
     instance_link = Column(String(500), nullable=True)
     region = Column(String(50), nullable=True)
+    state = Column(String(50), nullable=True)  # Indian state/UT
     implementation_state = Column(String(50), nullable=True)  # e.g. Go Live
     new_recurring = Column(String(20), nullable=True)  # New / Recurring
     kickoff_meeting_date = Column(Date, nullable=True)
@@ -151,9 +176,9 @@ class Client(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
-    csm = relationship("User", foreign_keys=[csm_id])
     pm = relationship("User", foreign_keys=[pm_id])
-    rm = relationship("User", foreign_keys=[rm_id])
+    csms = relationship("User", secondary="client_csms")
+    rms = relationship("User", secondary="client_rms")
     phases = relationship(
         "Phase", back_populates="client", cascade="all, delete-orphan"
     )

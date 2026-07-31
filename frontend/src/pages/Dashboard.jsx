@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
+import IndiaMap from '../components/IndiaMap'
 
 const CARDS = [
   { key: 'total_clients', label: 'Total Clients', note: 'Live client records', tone: 'blue' },
@@ -189,6 +190,13 @@ export default function Dashboard() {
             <Link to="/search">Search records</Link>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <div className="dashboard-card-header">
+          <h3>Clients by State</h3>
+        </div>
+        <IndiaMap counts={summary?.state_counts || {}} />
       </div>
     </div>
   )

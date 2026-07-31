@@ -10,12 +10,12 @@ router = APIRouter()
 
 def _serialize(notification: models.Notification) -> dict:
     data = schemas.NotificationResponse.model_validate(notification).model_dump()
-    phase = None
     if notification.activity and notification.activity.phase_module:
         phase = notification.activity.phase_module.phase
-    if phase:
         data["phase_id"] = phase.id
         data["client_name"] = phase.client.name if phase.client else None
+    elif notification.client:
+        data["client_name"] = notification.client.name
     return data
 
 

@@ -4,6 +4,7 @@ from sqlalchemy import or_
 from app.database import get_db
 from app import models
 from app.dependencies import get_current_active_user, require_permission
+from app.services.access import filter_clients_query, filter_phases_query
 
 router = APIRouter()
 
@@ -19,7 +20,7 @@ def global_search(
     if term == "%%":
         return {"clients": [], "phases": [], "activities": [], "users": []}
 
-    clients = (
+    clients_query = (
         db.query(models.Client)
         .filter(
             models.Client.is_deleted == False,
@@ -29,11 +30,10 @@ def global_search(
                 models.Client.institution_type.ilike(term),
             ),
         )
-        .limit(10)
-        .all()
     )
+    clients = filter_clients_query(clients_query, db, current_user).limit(10).all()
 
-    phases = (
+    phases_query = (
         db.query(models.Phase)
         .join(models.Client)
         .filter(
@@ -46,11 +46,10 @@ def global_search(
                 models.Client.name.ilike(term),
             ),
         )
-        .limit(10)
-        .all()
     )
+    phases = filter_phases_query(phases_query, db, current_user).limit(10).all()
 
-    activities = (
+    activities_query = (
         db.query(models.Activity)
         .join(models.PhaseModule)
         .join(models.Module)
@@ -71,9 +70,8 @@ def global_search(
                 models.Client.name.ilike(term),
             ),
         )
-        .limit(10)
-        .all()
     )
+    activities = filter_clients_query(activities_query, db, current_user).limit(10).all()
 
     users = (
         db.query(models.User)

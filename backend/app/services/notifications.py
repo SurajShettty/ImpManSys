@@ -102,3 +102,32 @@ def notify_assignment(db: Session, activity: models.Activity) -> None:
             )
         )
     db.commit()
+
+
+def notify_client_assignment(db: Session, client: models.Client, user_id: int, role_label: str) -> None:
+    """Create or reactivate a "you were added to this client" alert."""
+    notification = (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.user_id == user_id,
+            models.Notification.client_id == client.id,
+            models.Notification.type == "client_assigned",
+        )
+        .first()
+    )
+    message = f"You were added as {role_label} for '{client.name}'"
+    if notification:
+        notification.is_read = False
+        notification.read_at = None
+        notification.message = message
+        notification.created_at = models.utc_now()
+    else:
+        db.add(
+            models.Notification(
+                user_id=user_id,
+                client_id=client.id,
+                type="client_assigned",
+                message=message,
+            )
+        )
+    db.commit()

@@ -17,9 +17,9 @@ A centralized implementation and customer success platform to manage client onbo
 
 - Administrator
 - Customer Success Manager (CSM)
+- Relationship Manager (RM)
 - Project Manager (PM)
 - Implementation Executive
-- Data Team
 - Support Team
 - Management
 - Client *(role exists in the system for future client-facing access; no client-facing portal UI exists yet)*

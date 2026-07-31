@@ -49,7 +49,7 @@ erDiagram
 | Column | Type | Notes |
 |--------|------|-------|
 | id | integer PK | |
-| name | varchar(50) UQ | Administrator, Customer Success Manager, Project Manager, Implementation Executive, Data Team, Support Team, Management, Client |
+| name | varchar(50) UQ | Administrator, Customer Success Manager, Relationship Manager, Project Manager, Implementation Executive, Support Team, Management, Client |
 | description | varchar(255) | |
 
 ### `permissions`

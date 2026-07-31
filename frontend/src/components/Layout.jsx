@@ -3,8 +3,8 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 
-const NOTIFICATION_TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue' }
-const NOTIFICATION_TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned' }
+const NOTIFICATION_TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue', client_assigned: 'green' }
+const NOTIFICATION_TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned', client_assigned: 'New client' }
 const NOTIFICATION_POLL_MS = 60000
 
 function NotificationBell() {
@@ -56,6 +56,7 @@ function NotificationBell() {
       }
     }
     if (n.phase_id) navigate(`/phases/${n.phase_id}`)
+    else if (n.client_id) navigate(`/clients/${n.client_id}`)
   }
 
   const markAllRead = async () => {

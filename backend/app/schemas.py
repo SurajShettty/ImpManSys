@@ -116,7 +116,8 @@ class ActivityLogResponse(ActivityLogCreate):
 class NotificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    activity_id: int
+    activity_id: int | None = None
+    client_id: int | None = None
     type: str
     message: str
     is_read: bool
@@ -151,14 +152,13 @@ class ClientBase(BaseModel):
     contract_start: date | None = None
     contract_end: date | None = None
     go_live_date: date | None = None
-    csm_id: int | None = None
     pm_id: int | None = None
-    rm_id: int | None = None
     sales_owner: str | None = None
 
     # Client tracker fields
     instance_link: str | None = None
     region: str | None = None
+    state: str | None = None
     implementation_state: str | None = None
     new_recurring: str | None = None
     kickoff_meeting_date: date | None = None
@@ -170,7 +170,8 @@ class ClientBase(BaseModel):
 
 
 class ClientCreate(ClientBase):
-    pass
+    csm_ids: list[int] = []
+    rm_ids: list[int] = []
 
 
 class ClientUpdate(BaseModel):
@@ -182,14 +183,15 @@ class ClientUpdate(BaseModel):
     contract_start: date | None = None
     contract_end: date | None = None
     go_live_date: date | None = None
-    csm_id: int | None = None
+    csm_ids: list[int] | None = None
     pm_id: int | None = None
-    rm_id: int | None = None
+    rm_ids: list[int] | None = None
     sales_owner: str | None = None
 
     # Client tracker fields
     instance_link: str | None = None
     region: str | None = None
+    state: str | None = None
     implementation_state: str | None = None
     new_recurring: str | None = None
     kickoff_meeting_date: date | None = None
@@ -205,9 +207,9 @@ class ClientResponse(ClientBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    csm: UserBrief | None = None
     pm: UserBrief | None = None
-    rm: UserBrief | None = None
+    csms: list[UserBrief] = []
+    rms: list[UserBrief] = []
     phase_count: int = 0
 
 

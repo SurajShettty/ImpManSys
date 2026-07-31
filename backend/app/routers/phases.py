@@ -11,6 +11,7 @@ from app.services.templates import (
     add_module_to_phase,
     recompute_phase_progress,
 )
+from app.services.access import ensure_client_access, filter_phases_query
 
 router = APIRouter()
 
@@ -28,6 +29,7 @@ def list_phases(
     current_user: models.User = Depends(require_permission("phase.view")),
 ):
     query = db.query(models.Phase).filter(models.Phase.is_deleted == False)
+    query = filter_phases_query(query, db, current_user)
     if client_id is not None:
         query = query.filter(models.Phase.client_id == client_id)
     if status_:
@@ -61,6 +63,7 @@ def create_phase(
     client = db.query(models.Client).filter(models.Client.id == payload.client_id, models.Client.is_deleted == False).first()
     if not client:
         raise HTTPException(status_code=400, detail="Client not found")
+    ensure_client_access(db, current_user, payload.client_id)
 
     phase = models.Phase(**payload.model_dump())
     db.add(phase)
@@ -85,6 +88,7 @@ def get_phase(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
     return phase
 
 
@@ -98,6 +102,7 @@ def update_phase(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
 
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(phase, field, value)
@@ -116,6 +121,7 @@ def delete_phase(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
 
     now = models.utc_now()
     phase.is_deleted = True
@@ -149,6 +155,7 @@ def list_phase_modules(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
     return [pm for pm in phase.phase_modules if not pm.is_deleted]
 
 
@@ -166,6 +173,7 @@ def add_phase_module(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
 
     module = db.query(models.Module).filter(models.Module.id == payload.module_id, models.Module.is_deleted == False).first()
     if not module:
@@ -219,6 +227,7 @@ def remove_phase_module(
         raise HTTPException(status_code=404, detail="Phase module not found")
 
     phase = phase_module.phase
+    ensure_client_access(db, current_user, phase.client_id)
     now = models.utc_now()
     phase_module.is_deleted = True
     phase_module.deleted_at = now
@@ -247,6 +256,7 @@ def get_phase_plan(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
 
     modules = []
     for pm in phase.phase_modules:
@@ -275,6 +285,7 @@ def list_phase_meetings(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
     return [m for m in phase.meetings if not m.is_deleted]
 
 
@@ -296,6 +307,7 @@ def get_phase_meeting(
     )
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    ensure_client_access(db, current_user, meeting.phase.client_id)
     return meeting
 
 
@@ -309,6 +321,7 @@ def create_phase_meeting(
     phase = db.query(models.Phase).filter(models.Phase.id == phase_id, models.Phase.is_deleted == False).first()
     if not phase:
         raise HTTPException(status_code=404, detail="Phase not found")
+    ensure_client_access(db, current_user, phase.client_id)
 
     meeting = models.Meeting(phase_id=phase_id, created_by=current_user.id, **payload.model_dump())
     db.add(meeting)
@@ -337,6 +350,7 @@ def update_phase_meeting(
     )
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    ensure_client_access(db, current_user, meeting.phase.client_id)
 
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(meeting, field, value)
@@ -364,6 +378,7 @@ def delete_phase_meeting(
     )
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    ensure_client_access(db, current_user, meeting.phase.client_id)
 
     meeting.is_deleted = True
     meeting.deleted_at = models.utc_now()

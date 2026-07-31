@@ -20,10 +20,10 @@ The **Implementation Management System (IMS)** is a single place to plan, run, a
 | Role | Why they use IMS |
 |------|------------------|
 | **Administrator** | Manages users, roles/permissions, and the module catalogue. |
-| **Customer Success Manager (CSM)** | Owns the client relationship, tracks overall health, logs meetings. |
+| **Customer Success Manager (CSM)** | Owns the client relationship, tracks overall health, logs meetings. Only sees clients they're assigned to. |
+| **Relationship Manager (RM)** | Owns specific client relationships alongside/instead of a CSM. Only sees clients they're assigned to. |
 | **Project Manager (PM)** | Builds the phase plan, assigns activities, manages deadlines. |
 | **Implementation Executive** | Executes day-to-day activities — configuration, data work, testing, training. |
-| **Data Team** | Read access to relevant client/phase/activity data. |
 | **Support Team** | Read access, plus meeting visibility, for go-live and post-launch support. |
 | **Management** | Views dashboards, audit logs, identifies delays. |
 | **Client** | *(Role exists in the system; there is no client-facing portal screen yet.)* |

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import api from '../api/client'
-import { StatusBadge, PriorityBadge, ProgressBar } from '../components/ui'
+import { StatusBadge, PriorityBadge, ProgressBar, MultiSelect } from '../components/ui'
+import { STATE_NAMES } from '../components/IndiaMap'
 
 const PROJECT_TYPES = [
   'New Implementation',
@@ -21,6 +22,7 @@ const NEW_RECURRING = ['New', 'Recurring']
 const IMPLEMENTATION_STATES = ['Go Live', 'Ongoing', 'Yet to start']
 
 // Fields the edit form manages, so we can build the payload generically.
+// csm_ids / rm_ids are handled separately since they're multi-value.
 const EDITABLE_FIELDS = [
   'name',
   'institution_type',
@@ -30,11 +32,10 @@ const EDITABLE_FIELDS = [
   'contract_start',
   'contract_end',
   'go_live_date',
-  'csm_id',
-  'rm_id',
   'sales_owner',
   'instance_link',
   'region',
+  'state',
   'implementation_state',
   'new_recurring',
   'kickoff_meeting_date',
@@ -51,6 +52,8 @@ function toForm(client) {
   for (const key of EDITABLE_FIELDS) {
     f[key] = client[key] == null ? '' : client[key]
   }
+  f.csm_ids = (client.csms || []).map((u) => u.id)
+  f.rm_ids = (client.rms || []).map((u) => u.id)
   return f
 }
 
@@ -124,14 +127,14 @@ export default function ClientDetail() {
       const payload = {}
       for (const key of EDITABLE_FIELDS) {
         const value = editForm[key]
-        if (key === 'csm_id' || key === 'rm_id') {
-          payload[key] = value === '' ? null : Number(value)
-        } else if (key === 'total_users') {
+        if (key === 'total_users') {
           payload[key] = value === '' ? null : Number(value)
         } else {
           payload[key] = value === '' ? null : value
         }
       }
+      payload.csm_ids = editForm.csm_ids || []
+      payload.rm_ids = editForm.rm_ids || []
       await api.put(`/clients/${id}`, payload)
       setEditing(false)
       load()
@@ -144,6 +147,7 @@ export default function ClientDetail() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const setEdit = (k) => (e) => setEditForm({ ...editForm, [k]: e.target.value })
+  const setEditMulti = (k) => (ids) => setEditForm({ ...editForm, [k]: ids })
 
   if (!client) return <div className="muted">{error || 'Loading…'}</div>
 
@@ -181,19 +185,20 @@ export default function ClientDetail() {
             <div><p className="stat-label">Status</p><p>{client.status}</p></div>
             <div><p className="stat-label">Contract</p><p>{client.contract_start || '—'} → {client.contract_end || '—'}</p></div>
             <div><p className="stat-label">Expected Go-Live</p><p>{client.go_live_date || '—'}</p></div>
-            <div><p className="stat-label">CSM</p><p>{client.csm?.name || '—'}</p></div>
+            <div><p className="stat-label">CSM</p><p>{client.csms?.length ? client.csms.map((u) => u.name).join(', ') : '—'}</p></div>
+            <div><p className="stat-label">Relationship Manager</p><p>{client.rms?.length ? client.rms.map((u) => u.name).join(', ') : '—'}</p></div>
             <div><p className="stat-label">Sales Owner</p><p>{client.sales_owner || '—'}</p></div>
           </div>
           {clientDetailsExpanded && (
             <div id="client-extra-details" className="client-extra-details">
               <div className="stat-grid">
                 <div><p className="stat-label">Region</p><p>{client.region || '—'}</p></div>
+                <div><p className="stat-label">State</p><p>{client.state || '—'}</p></div>
                 <div><p className="stat-label">Implementation State</p><p>{client.implementation_state || '—'}</p></div>
                 <div><p className="stat-label">New / Recurring</p><p>{client.new_recurring || '—'}</p></div>
                 <div><p className="stat-label">Agreed Go-Live</p><p>{client.agreed_go_live_date || '—'}</p></div>
                 <div><p className="stat-label">Kickoff Meeting</p><p>{client.kickoff_meeting_date || '—'}</p></div>
                 <div><p className="stat-label">Billing / Live Date</p><p>{client.billing_date || '—'}</p></div>
-                <div><p className="stat-label">Relationship Manager</p><p>{client.rm?.name || '—'}</p></div>
                 <div><p className="stat-label">Total Users</p><p>{client.total_users ?? '—'}</p></div>
                 <div><p className="stat-label">Master Data Status</p><p>{client.master_data_status || '—'}</p></div>
                 <div style={{ gridColumn: '1 / -1' }}>
@@ -240,12 +245,14 @@ export default function ClientDetail() {
                   {CLIENT_STATUSES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
-              <div>
-                <label>Customer Success Manager</label>
-                <select value={editForm.csm_id} onChange={setEdit('csm_id')}>
-                  <option value="">Unassigned</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label>Customer Success Manager(s)</label>
+                <MultiSelect
+                  options={users}
+                  value={editForm.csm_ids || []}
+                  onChange={setEditMulti('csm_ids')}
+                  placeholder="Unassigned"
+                />
               </div>
               <div>
                 <label>Sales Owner</label>
@@ -283,6 +290,13 @@ export default function ClientDetail() {
                 </select>
               </div>
               <div>
+                <label>State</label>
+                <select value={editForm.state} onChange={setEdit('state')}>
+                  <option value="">Select…</option>
+                  {STATE_NAMES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
                 <label>Implementation State</label>
                 <select value={editForm.implementation_state} onChange={setEdit('implementation_state')}>
                   <option value="">Select…</option>
@@ -296,12 +310,14 @@ export default function ClientDetail() {
                   {NEW_RECURRING.map((r) => <option key={r}>{r}</option>)}
                 </select>
               </div>
-              <div>
-                <label>Relationship Manager</label>
-                <select value={editForm.rm_id} onChange={setEdit('rm_id')}>
-                  <option value="">Unassigned</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label>Relationship Manager(s)</label>
+                <MultiSelect
+                  options={users}
+                  value={editForm.rm_ids || []}
+                  onChange={setEditMulti('rm_ids')}
+                  placeholder="Unassigned"
+                />
               </div>
               <div>
                 <label>Total Users</label>

@@ -7,6 +7,7 @@ from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 from app.services.templates import recompute_phase_module_progress
 from app.services.notifications import notify_assignment
+from app.services.access import ensure_client_access
 
 router = APIRouter()
 
@@ -14,10 +15,11 @@ router = APIRouter()
 # Activity-level work can also be done by implementation executives.
 
 
-def _load_activity(db: Session, activity_id: int) -> models.Activity:
+def _load_activity(db: Session, activity_id: int, current_user: models.User) -> models.Activity:
     activity = db.query(models.Activity).filter(models.Activity.id == activity_id, models.Activity.is_deleted == False).first()
     if not activity:
         raise HTTPException(status_code=404, detail="Activity not found")
+    ensure_client_access(db, current_user, activity.phase_module.phase.client_id)
     return activity
 
 
@@ -32,7 +34,7 @@ def get_activity(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission("activity.view")),
 ):
-    return _load_activity(db, activity_id)
+    return _load_activity(db, activity_id, current_user)
 
 
 @router.post("/", response_model=schemas.ActivityResponse, status_code=status.HTTP_201_CREATED)
@@ -47,6 +49,7 @@ def create_activity(
     ).first()
     if not phase_module:
         raise HTTPException(status_code=400, detail="Module not found")
+    ensure_client_access(db, current_user, phase_module.phase.client_id)
 
     activity = models.Activity(**payload.model_dump())
     # Place new activities at the end of their module by default.
@@ -74,7 +77,7 @@ def update_activity(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission("activity.update")),
 ):
-    activity = _load_activity(db, activity_id)
+    activity = _load_activity(db, activity_id, current_user)
     data = payload.model_dump(exclude_unset=True)
     previous_owner_id = activity.owner_id
 
@@ -115,7 +118,7 @@ def delete_activity(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission("activity.delete")),
 ):
-    activity = _load_activity(db, activity_id)
+    activity = _load_activity(db, activity_id, current_user)
     phase_module = activity.phase_module
     now = models.utc_now()
     activity.is_deleted = True
@@ -143,7 +146,7 @@ def add_checklist_item(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(require_permission("activity.update")),
 ):
-    _load_activity(db, activity_id)
+    _load_activity(db, activity_id, current_user)
     item = models.ChecklistItem(activity_id=activity_id, **payload.model_dump())
     db.add(item)
     db.commit()
@@ -164,6 +167,7 @@ def update_checklist_item(
     item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id, models.ChecklistItem.is_deleted == False).first()
     if not item:
         raise HTTPException(status_code=404, detail="Checklist item not found")
+    ensure_client_access(db, current_user, item.activity.phase_module.phase.client_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     db.commit()
@@ -180,6 +184,7 @@ def delete_checklist_item(
     item = db.query(models.ChecklistItem).filter(models.ChecklistItem.id == item_id, models.ChecklistItem.is_deleted == False).first()
     if not item:
         raise HTTPException(status_code=404, detail="Checklist item not found")
+    ensure_client_access(db, current_user, item.activity.phase_module.phase.client_id)
     item.is_deleted = True
     item.deleted_at = models.utc_now()
     db.commit()
@@ -209,6 +214,7 @@ def reorder_activities(
     ).first()
     if not phase_module:
         raise HTTPException(status_code=404, detail="Module not found")
+    ensure_client_access(db, current_user, phase_module.phase.client_id)
 
     activities = {a.id: a for a in phase_module.activities if not a.is_deleted}
     for position, activity_id in enumerate(payload.ordered_activity_ids, start=1):
