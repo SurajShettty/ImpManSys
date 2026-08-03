@@ -14,6 +14,7 @@ const BLANK = {
   go_live_date: '',
   region: '',
   state: '',
+  instance_link: '',
   implementation_state: '',
   new_recurring: '',
   kickoff_meeting_date: '',
@@ -70,8 +71,16 @@ export default function Clients() {
 
   const submit = async (e) => {
     e.preventDefault()
-    setSaving(true)
     setError('')
+    if (form.csm_ids.length === 0) {
+      setError('Select at least one Customer Success Manager')
+      return
+    }
+    if (form.rm_ids.length === 0) {
+      setError('Select at least one Relationship Manager')
+      return
+    }
+    setSaving(true)
     try {
       // Drop empty optional fields so the API keeps them null.
       const payload = Object.fromEntries(Object.entries(form).filter(([, v]) => v !== ''))
@@ -134,8 +143,8 @@ export default function Clients() {
                 <input value={form.name} onChange={set('name')} required />
               </div>
               <div>
-                <label>Institution Type</label>
-                <select value={form.institution_type} onChange={set('institution_type')}>
+                <label>Institution Type *</label>
+                <select value={form.institution_type} onChange={set('institution_type')} required>
                   <option value="">Select…</option>
                   <option>University</option>
                   <option>College</option>
@@ -160,18 +169,22 @@ export default function Clients() {
                 <input type="date" value={form.go_live_date} onChange={set('go_live_date')} />
               </div>
               <div>
-                <label>Region</label>
-                <select value={form.region} onChange={set('region')}>
+                <label>Region *</label>
+                <select value={form.region} onChange={set('region')} required>
                   <option value="">Select…</option>
                   {REGIONS.map((r) => <option key={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label>State</label>
-                <select value={form.state} onChange={set('state')}>
+                <label>State *</label>
+                <select value={form.state} onChange={set('state')} required>
                   <option value="">Select…</option>
                   {STATE_NAMES.map((s) => <option key={s}>{s}</option>)}
                 </select>
+              </div>
+              <div>
+                <label>Instance Link *</label>
+                <input value={form.instance_link} onChange={set('instance_link')} required />
               </div>
               <div>
                 <label>Implementation State</label>
@@ -200,21 +213,21 @@ export default function Clients() {
                 <input type="number" value={form.total_users} onChange={set('total_users')} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label>Customer Success Manager(s)</label>
+                <label>Customer Success Manager(s) *</label>
                 <MultiSelect
                   options={users}
                   value={form.csm_ids}
                   onChange={setMulti('csm_ids')}
-                  placeholder="Unassigned — can also be set later"
+                  placeholder="Select at least one…"
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label>Relationship Manager(s)</label>
+                <label>Relationship Manager(s) *</label>
                 <MultiSelect
                   options={users}
                   value={form.rm_ids}
                   onChange={setMulti('rm_ids')}
-                  placeholder="Unassigned"
+                  placeholder="Select at least one…"
                 />
               </div>
             </div>

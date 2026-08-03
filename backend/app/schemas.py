@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, date
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 
 
 # ---------- Role ----------
@@ -170,8 +170,26 @@ class ClientBase(BaseModel):
 
 
 class ClientCreate(ClientBase):
-    csm_ids: list[int] = []
-    rm_ids: list[int] = []
+    institution_type: str
+    region: str
+    state: str
+    instance_link: str
+    csm_ids: list[int]
+    rm_ids: list[int]
+
+    @field_validator("name", "institution_type", "region", "state", "instance_link")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("This field is required")
+        return v
+
+    @field_validator("csm_ids", "rm_ids")
+    @classmethod
+    def _at_least_one(cls, v: list[int]) -> list[int]:
+        if not v:
+            raise ValueError("At least one must be selected")
+        return v
 
 
 class ClientUpdate(BaseModel):
