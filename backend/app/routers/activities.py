@@ -5,7 +5,7 @@ from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
-from app.services.templates import recompute_phase_module_progress
+from app.services.templates import recompute_phase_module_progress, recompute_client_kickoff_date
 from app.services.notifications import notify_assignment
 from app.services.access import ensure_client_access
 
@@ -63,6 +63,7 @@ def create_activity(
     db.commit()
     db.refresh(activity)
     _roll_up(db, activity)
+    recompute_client_kickoff_date(db, phase_module.phase.client)
     db.commit()
     if activity.owner_id and activity.owner_id != current_user.id:
         notify_assignment(db, activity)

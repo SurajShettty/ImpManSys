@@ -183,11 +183,34 @@ def _generate_activities_for_module(db: Session, phase_module: models.PhaseModul
             )
         )
     db.flush()
+    recompute_client_kickoff_date(db, phase_module.phase.client)
+
+
+def recompute_client_kickoff_date(db: Session, client: models.Client | None) -> None:
+    """Stamp the client's kickoff date with when their first-ever activity was created.
+
+    Only fills in a blank date - it won't override one set manually on the
+    client (e.g. at client creation).
+    """
+    if not client or client.is_deleted or client.kickoff_meeting_date is not None:
+        return
+
+    first_activity = (
+        db.query(models.Activity)
+        .join(models.PhaseModule, models.Activity.phase_module_id == models.PhaseModule.id)
+        .join(models.Phase, models.PhaseModule.phase_id == models.Phase.id)
+        .filter(models.Phase.client_id == client.id, models.Activity.is_deleted == False)
+        .order_by(models.Activity.created_at.asc(), models.Activity.id.asc())
+        .first()
+    )
+    if first_activity:
+        client.kickoff_meeting_date = first_activity.created_at.date()
 
 
 def create_default_kickoff_module(db: Session, phase: models.Phase) -> None:
     """Every phase gets a Kickoff module with the standard onboarding activities."""
     _create_phase_module_with_activities(db, phase, "Kickoff", "Onboarding")
+    recompute_phase_progress(db, phase)
 
 
 def add_module_to_phase(
@@ -264,24 +287,26 @@ def recompute_phase_progress(db: Session, phase: models.Phase) -> None:
 def recompute_client_implementation_state(
     db: Session, client: models.Client | None
 ) -> None:
-    """Set client implementation state to Go Live when all work is complete."""
+    """Derive implementation state / status from phase progress.
+
+    All phases at 100% -> Go Live / Completed. Any phase with progress but
+    not all complete (e.g. a new phase/module was added after completion) ->
+    Ongoing / Active. "Churned" and "On Hold" are manual overrides, so don't
+    stomp them.
+    """
     if not client or client.is_deleted:
+        return
+
+    if client.status in ("Churned", "On Hold"):
         return
 
     phases = [p for p in client.phases if not p.is_deleted]
     if not phases:
         return
 
-    activities = [
-        activity
-        for phase in phases
-        for phase_module in phase.phase_modules
-        if not phase_module.is_deleted
-        for activity in phase_module.activities
-        if not activity.is_deleted and activity.status != "Cancelled"
-    ]
-    if not activities:
-        return
-
-    if all(activity.status == COMPLETED_STATUS for activity in activities):
+    if all(phase.progress >= 100 for phase in phases):
         client.implementation_state = "Go Live"
+        client.status = "Completed"
+    elif any(phase.progress > 0 for phase in phases):
+        client.implementation_state = "Ongoing"
+        client.status = "Active"
