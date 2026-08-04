@@ -85,13 +85,15 @@ class ActivityLog(Base):
 
 
 class Notification(Base):
-    """A personal alert: activity due-today/overdue/assigned, or client_assigned
-    (added as a client's CSM/RM). Exactly one of activity_id/client_id is set,
+    """A personal alert: activity due-today/overdue/assigned, client_assigned
+    (added as a client's CSM/RM), or meeting_follow_up (a meeting's follow-up
+    date has arrived). Exactly one of activity_id/client_id/meeting_id is set,
     matching the notification's type.
 
-    Due-today/overdue rows are time-derived, so they're upserted/resolved by
-    services.notifications.sync_due_notifications() on every read rather than
-    on a schedule (this app has no background job runner). Assigned/
+    Due-today/overdue/meeting_follow_up rows are time-derived, so they're
+    upserted/resolved by services.notifications.sync_due_notifications() /
+    sync_meeting_followup_notifications() on every read rather than on a
+    schedule (this app has no background job runner). Assigned/
     client_assigned rows are event-derived and created directly when an
     activity's owner or a client's csm/rm list changes.
     """
@@ -100,13 +102,15 @@ class Notification(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "activity_id", "type", name="uq_notification_user_activity_type"),
         UniqueConstraint("user_id", "client_id", "type", name="uq_notification_user_client_type"),
+        UniqueConstraint("user_id", "meeting_id", "type", name="uq_notification_user_meeting_type"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
-    type = Column(String(20), nullable=False)  # due_today / overdue / assigned / client_assigned
+    meeting_id = Column(Integer, ForeignKey("meetings.id"), nullable=True, index=True)
+    type = Column(String(20), nullable=False)  # due_today / overdue / assigned / client_assigned / meeting_follow_up
     message = Column(String(255), nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -115,6 +119,7 @@ class Notification(Base):
     user = relationship("User", foreign_keys=[user_id])
     activity = relationship("Activity", foreign_keys=[activity_id])
     client = relationship("Client", foreign_keys=[client_id])
+    meeting = relationship("Meeting", foreign_keys=[meeting_id])
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +155,7 @@ class Client(Base):
     name = Column(String(150), nullable=False, index=True)
     crm_id = Column(String(50), nullable=True)
     institution_type = Column(String(100), nullable=True)
-    status = Column(String(30), nullable=False, default="Active")  # Active/On Hold/Completed/Churned
+    status = Column(String(30), nullable=False, default="Active")  # Active/On Hold/Completed/Churned/Cancelled
     priority = Column(String(20), nullable=False, default="Medium")  # Critical/High/Medium/Low
     contract_start = Column(Date, nullable=True)
     contract_end = Column(Date, nullable=True)
@@ -218,6 +223,10 @@ class Phase(Base):
             for pm in self.phase_modules
             if not pm.is_deleted and pm.module and not pm.module.is_deleted
         ]
+
+    @property
+    def client_name(self) -> str | None:
+        return self.client.name if self.client else None
 
 
 class Module(Base):

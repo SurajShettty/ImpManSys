@@ -16,7 +16,7 @@ const PROJECT_TYPES = [
 
 const INSTITUTION_TYPES = ['University', 'College', 'School']
 const PRIORITIES = ['Critical', 'High', 'Medium', 'Low']
-const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
+const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned', 'Cancelled']
 const REGIONS = ['North', 'South', 'East', 'West', 'Central']
 const NEW_RECURRING = ['New', 'Recurring']
 const IMPLEMENTATION_STATES = ['Go Live', 'Ongoing', 'Yet to start']

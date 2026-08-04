@@ -118,6 +118,7 @@ class NotificationResponse(BaseModel):
     id: int
     activity_id: int | None = None
     client_id: int | None = None
+    meeting_id: int | None = None
     type: str
     message: str
     is_read: bool
@@ -258,6 +259,7 @@ class PhaseResponse(PhaseBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
     client_id: int
+    client_name: str | None = None
     progress: float
     module_names: list[str] = []
     created_at: datetime

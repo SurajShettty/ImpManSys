@@ -2,6 +2,7 @@ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import MyClients from './pages/MyClients'
 import Clients from './pages/Clients'
 import ClientDetail from './pages/ClientDetail'
 import Phases from './pages/Phases'
@@ -29,6 +30,14 @@ function App() {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route
+          path="/my-clients"
+          element={
+            <RoleRoute allowedRoles={['Customer Success Manager', 'Relationship Manager']}>
+              <MyClients />
+            </RoleRoute>
+          }
+        />
         <Route path="/clients" element={<Clients />} />
         <Route path="/clients/:id" element={<ClientDetail />} />
         <Route path="/phases" element={<Phases />} />

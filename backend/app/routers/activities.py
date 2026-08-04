@@ -5,7 +5,11 @@ from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
-from app.services.templates import recompute_phase_module_progress, recompute_client_kickoff_date
+from app.services.templates import (
+    recompute_phase_module_progress,
+    recompute_client_kickoff_date,
+    recompute_phase_start_date,
+)
 from app.services.notifications import notify_assignment
 from app.services.access import ensure_client_access
 
@@ -101,6 +105,8 @@ def update_activity(
     db.commit()
     db.refresh(activity)
     _roll_up(db, activity)
+    if old_status == "Not Started" and new_status not in (None, "Not Started"):
+        recompute_phase_start_date(db, activity.phase_module.phase)
     db.commit()
     if (
         "owner_id" in data

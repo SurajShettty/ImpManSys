@@ -12,7 +12,7 @@ const CARDS = [
   { key: 'total_phases', label: 'Total Phases', note: 'All implementation phases', tone: 'grey' },
 ]
 
-const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
+const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned', 'Cancelled']
 const PHASE_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
 const REGIONS = ['North', 'South', 'East', 'West', 'Central']
 

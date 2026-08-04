@@ -43,6 +43,48 @@ export const STATE_NAMES = [
   'West Bengal',
 ]
 
+// Zonal classification (North/South/East/West/Central) for each state/UT -
+// used to default the client form's Region field from the selected State.
+export const STATE_REGIONS = {
+  'Andaman and Nicobar': 'South',
+  'Andhra Pradesh': 'South',
+  'Arunachal Pradesh': 'East',
+  'Assam': 'East',
+  'Bihar': 'East',
+  'Chandigarh': 'North',
+  'Chhattisgarh': 'Central',
+  'Dadra and Nagar Haveli': 'West',
+  'Daman and Diu': 'West',
+  'Delhi': 'North',
+  'Goa': 'West',
+  'Gujarat': 'West',
+  'Haryana': 'North',
+  'Himachal Pradesh': 'North',
+  'Jammu and Kashmir': 'North',
+  'Jharkhand': 'East',
+  'Karnataka': 'South',
+  'Kerala': 'South',
+  'Ladakh': 'North',
+  'Lakshadweep': 'South',
+  'Madhya Pradesh': 'Central',
+  'Maharashtra': 'West',
+  'Manipur': 'East',
+  'Meghalaya': 'East',
+  'Mizoram': 'East',
+  'Nagaland': 'East',
+  'Odisha': 'East',
+  'Puducherry': 'South',
+  'Punjab': 'North',
+  'Rajasthan': 'North',
+  'Sikkim': 'East',
+  'Tamil Nadu': 'South',
+  'Telangana': 'South',
+  'Tripura': 'East',
+  'Uttar Pradesh': 'Central',
+  'Uttarakhand': 'North',
+  'West Bengal': 'East',
+}
+
 // A couple of states in the source map data still use pre-rename ids.
 const SVG_ID_ALIASES = {
   Odisha: 'Orissa',

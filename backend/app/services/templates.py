@@ -4,6 +4,8 @@ The module template catalogue maps each predefined module to the activities that
 should be auto-created when the module is added to a phase. The default Kickoff
 module is created automatically for every new phase.
 """
+from datetime import date
+
 from sqlalchemy.orm import Session
 from app import models
 
@@ -207,6 +209,17 @@ def recompute_client_kickoff_date(db: Session, client: models.Client | None) -> 
         client.kickoff_meeting_date = first_activity.created_at.date()
 
 
+def recompute_phase_start_date(db: Session, phase: models.Phase | None) -> None:
+    """Stamp the phase's start date the first time any of its activities leaves 'Not Started'.
+
+    Only fills in a blank date - it won't override one set manually.
+    """
+    if not phase or phase.is_deleted or phase.start_date is not None:
+        return
+
+    phase.start_date = date.today()
+
+
 def create_default_kickoff_module(db: Session, phase: models.Phase) -> None:
     """Every phase gets a Kickoff module with the standard onboarding activities."""
     _create_phase_module_with_activities(db, phase, "Kickoff", "Onboarding")
@@ -289,15 +302,17 @@ def recompute_client_implementation_state(
 ) -> None:
     """Derive implementation state / status from phase progress.
 
-    All phases at 100% -> Go Live / Completed. Any phase with progress but
-    not all complete (e.g. a new phase/module was added after completion) ->
-    Ongoing / Active. "Churned" and "On Hold" are manual overrides, so don't
+    All phases at 100% -> Go Live / Completed, stamping billing_date (the
+    "Billing / Go-Live Date") with today's date the moment the client first
+    reaches that state. Any phase with progress but not all complete (e.g. a
+    new phase/module was added after completion) -> Ongoing / Active.
+    "Churned", "On Hold", and "Cancelled" are manual overrides, so don't
     stomp them.
     """
     if not client or client.is_deleted:
         return
 
-    if client.status in ("Churned", "On Hold"):
+    if client.status in ("Churned", "On Hold", "Cancelled"):
         return
 
     phases = [p for p in client.phases if not p.is_deleted]
@@ -305,6 +320,8 @@ def recompute_client_implementation_state(
         return
 
     if all(phase.progress >= 100 for phase in phases):
+        if client.status != "Completed":
+            client.billing_date = date.today()
         client.implementation_state = "Go Live"
         client.status = "Completed"
     elif any(phase.progress > 0 for phase in phases):

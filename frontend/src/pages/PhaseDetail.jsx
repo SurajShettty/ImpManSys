@@ -453,7 +453,11 @@ export default function PhaseDetail() {
   return (
     <div>
       <div className="breadcrumb">
-        <Link to="/phases">Phases</Link> / {phase.name}
+        {phase.client_name ? (
+          <Link to={`/clients/${phase.client_id}`}>{phase.client_name}</Link>
+        ) : (
+          <Link to="/phases">Phases</Link>
+        )} / {phase.name}
       </div>
       <div className="page-header">
         <h2 style={{ margin: 0 }}>{phase.name}</h2>
@@ -465,8 +469,8 @@ export default function PhaseDetail() {
       <div className="tabs" role="tablist" aria-label="Phase sections">
         {[
           ['overview', 'Overview'],
-          ['modules', `Modules (${plan.length})`],
           ['meetings', `Meetings (${meetings.length})`],
+          ['timeline', 'Timeline'],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -560,104 +564,6 @@ export default function PhaseDetail() {
           </form>
         </div>
       )}
-          {plan.length > 0 ? (
-            <>
-              <div className="card" style={{ marginBottom: '1rem' }}>
-                <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
-                <ModuleTimeline modules={plan} />
-              </div>
-              <div className="card">
-                <h3 style={{ marginTop: 0 }}>Gantt Timeline</h3>
-                <GanttTimeline
-                  modules={plan}
-                  phaseStart={phase.start_date}
-                  phaseEnd={phase.end_date}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="card empty-state">
-              <h3>No timeline yet</h3>
-              <p className="muted">Add modules to build the phase timeline.</p>
-              <button className="btn btn-primary btn-sm" onClick={() => setActiveTab('modules')}>
-                Add Modules
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {activeTab === 'meetings' && (
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div className="page-header" style={{ marginTop: 0 }}>
-          <h3 style={{ margin: 0 }}>Meetings & Communication Log</h3>
-          <button className="btn btn-primary btn-sm" onClick={() => openMeetingModal()}>
-            + Add Meeting
-          </button>
-        </div>
-        {meetings.length === 0 ? (
-          <div className="empty-state compact">
-            <h3>No meetings yet</h3>
-            <p className="muted">Add the first meeting note, decision, or follow-up for this phase.</p>
-          </div>
-        ) : (
-          <div className="meetings-list">
-            {meetings.map((m) => {
-              const isExpanded = expandedMeetings[m.id]
-              return (
-                <div className="meeting-card" key={m.id}>
-                  <div className="meeting-summary">
-                    <button
-                      type="button"
-                      className="meeting-toggle"
-                      onClick={() => setExpandedMeetings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
-                      aria-label={isExpanded ? 'Collapse meeting' : 'Expand meeting'}
-                      title={isExpanded ? 'Collapse' : 'Expand'}
-                    >
-                      {isExpanded ? '▼' : '▶'}
-                    </button>
-                    <div className="meeting-summary-text">
-                      <strong className="meeting-title">{m.title}</strong>
-                      <span className="muted">{m.meeting_date}</span>
-                      {m.participants && <span className="muted">• {m.participants}</span>}
-                      {m.next_follow_up && <span className="muted">• Next: {m.next_follow_up}</span>}
-                    </div>
-                    <div className="actions">
-                      <button className="btn btn-secondary btn-sm" onClick={() => openMeetingModal(m)}>Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => deleteMeeting(m)}>Delete</button>
-                    </div>
-                  </div>
-                  {isExpanded && (
-                    <div className="meeting-details">
-                      {m.discussion && (
-                        <div className="meeting-field">
-                          <span className="meeting-label">Discussion / MoM</span>
-                          <p>{m.discussion}</p>
-                        </div>
-                      )}
-                      {m.decisions && (
-                        <div className="meeting-field">
-                          <span className="meeting-label">Decisions</span>
-                          <p>{m.decisions}</p>
-                        </div>
-                      )}
-                      {m.action_items && (
-                        <div className="meeting-field">
-                          <span className="meeting-label">Action Items</span>
-                          <p>{m.action_items}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-      )}
-
-      {activeTab === 'modules' && (
       <div className="phase-layout">
         <div className="phase-main">
           <div className="page-header">
@@ -865,10 +771,106 @@ export default function PhaseDetail() {
               )}
             </div>
           ))}
-
         </div>
-
       </div>
+        </>
+      )}
+
+      {activeTab === 'meetings' && (
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="page-header" style={{ marginTop: 0 }}>
+          <h3 style={{ margin: 0 }}>Meetings & Communication Log</h3>
+          <button className="btn btn-primary btn-sm" onClick={() => openMeetingModal()}>
+            + Add Meeting
+          </button>
+        </div>
+        {meetings.length === 0 ? (
+          <div className="empty-state compact">
+            <h3>No meetings yet</h3>
+            <p className="muted">Add the first meeting note, decision, or follow-up for this phase.</p>
+          </div>
+        ) : (
+          <div className="meetings-list">
+            {meetings.map((m) => {
+              const isExpanded = expandedMeetings[m.id]
+              return (
+                <div className="meeting-card" key={m.id}>
+                  <div className="meeting-summary">
+                    <button
+                      type="button"
+                      className="meeting-toggle"
+                      onClick={() => setExpandedMeetings((prev) => ({ ...prev, [m.id]: !prev[m.id] }))}
+                      aria-label={isExpanded ? 'Collapse meeting' : 'Expand meeting'}
+                      title={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      {isExpanded ? '▼' : '▶'}
+                    </button>
+                    <div className="meeting-summary-text">
+                      <strong className="meeting-title">{m.title}</strong>
+                      <span className="muted">{m.meeting_date}</span>
+                      {m.participants && <span className="muted">• {m.participants}</span>}
+                      {m.next_follow_up && <span className="muted">• Next: {m.next_follow_up}</span>}
+                    </div>
+                    <div className="actions">
+                      <button className="btn btn-secondary btn-sm" onClick={() => openMeetingModal(m)}>Edit</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => deleteMeeting(m)}>Delete</button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="meeting-details">
+                      {m.discussion && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Discussion / MoM</span>
+                          <p>{m.discussion}</p>
+                        </div>
+                      )}
+                      {m.decisions && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Decisions</span>
+                          <p>{m.decisions}</p>
+                        </div>
+                      )}
+                      {m.action_items && (
+                        <div className="meeting-field">
+                          <span className="meeting-label">Action Items</span>
+                          <p>{m.action_items}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      )}
+
+      {activeTab === 'timeline' && (
+        plan.length > 0 ? (
+          <>
+            <div className="card" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ marginTop: 0 }}>Status Timeline</h3>
+              <ModuleTimeline modules={plan} />
+            </div>
+            <div className="card">
+              <h3 style={{ marginTop: 0 }}>Gantt Timeline</h3>
+              <GanttTimeline
+                modules={plan}
+                phaseStart={phase.start_date}
+                phaseEnd={phase.end_date}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="card empty-state">
+            <h3>No timeline yet</h3>
+            <p className="muted">Add modules to build the phase timeline.</p>
+            <button className="btn btn-primary btn-sm" onClick={() => setActiveTab('overview')}>
+              Add Modules
+            </button>
+          </div>
+        )
       )}
 
       {meetingModalOpen && (

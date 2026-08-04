@@ -3,8 +3,8 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 
-const NOTIFICATION_TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue', client_assigned: 'green' }
-const NOTIFICATION_TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned', client_assigned: 'New client' }
+const NOTIFICATION_TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue', client_assigned: 'green', meeting_follow_up: 'amber' }
+const NOTIFICATION_TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned', client_assigned: 'New client', meeting_follow_up: 'Follow-up' }
 const NOTIFICATION_POLL_MS = 60000
 
 function NotificationBell() {
@@ -216,6 +216,9 @@ export default function Layout() {
           </div>
           <div className="navbar-links">
             <NavLink to="/" end className="nav-link">Dashboard</NavLink>
+            {['Customer Success Manager', 'Relationship Manager'].includes(user?.role_name) && (
+              <NavLink to="/my-clients" className="nav-link">My Worklist</NavLink>
+            )}
             <NavLink to="/clients" className="nav-link">Clients</NavLink>
             <NavLink to="/phases" className="nav-link">Phases</NavLink>
             {user?.permissions?.includes('user.view') && (

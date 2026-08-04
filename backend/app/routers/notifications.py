@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_active_user
-from app.services.notifications import sync_due_notifications
+from app.services.notifications import sync_due_notifications, sync_meeting_followup_notifications
 
 router = APIRouter()
 
@@ -12,6 +12,10 @@ def _serialize(notification: models.Notification) -> dict:
     data = schemas.NotificationResponse.model_validate(notification).model_dump()
     if notification.activity and notification.activity.phase_module:
         phase = notification.activity.phase_module.phase
+        data["phase_id"] = phase.id
+        data["client_name"] = phase.client.name if phase.client else None
+    elif notification.meeting:
+        phase = notification.meeting.phase
         data["phase_id"] = phase.id
         data["client_name"] = phase.client.name if phase.client else None
     elif notification.client:
@@ -28,6 +32,7 @@ def list_notifications(
 ):
     """The caller's own notifications - no permission code needed (personal inbox)."""
     sync_due_notifications(db)
+    sync_meeting_followup_notifications(db)
 
     base_query = db.query(models.Notification).filter(models.Notification.user_id == current_user.id)
     unread_count = base_query.filter(models.Notification.is_read == False).count()

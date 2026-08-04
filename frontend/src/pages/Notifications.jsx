@@ -4,8 +4,8 @@ import api from '../api/client'
 import { Pagination, pageRangeText } from '../components/ui'
 
 const PAGE_SIZE = 20
-const TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue', client_assigned: 'green' }
-const TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned', client_assigned: 'New client' }
+const TYPE_COLOURS = { due_today: 'amber', overdue: 'red', assigned: 'blue', client_assigned: 'green', meeting_follow_up: 'amber' }
+const TYPE_LABELS = { due_today: 'Due today', overdue: 'Overdue', assigned: 'Assigned', client_assigned: 'New client', meeting_follow_up: 'Follow-up' }
 
 export default function Notifications() {
   const navigate = useNavigate()

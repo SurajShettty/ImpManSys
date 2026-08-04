@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, PriorityBadge, Pagination, pageRangeText, MultiSelect } from '../components/ui'
-import { STATE_NAMES } from '../components/IndiaMap'
+import { STATE_NAMES, STATE_REGIONS } from '../components/IndiaMap'
 
 const PAGE_SIZE = 20
 
@@ -15,10 +15,8 @@ const BLANK = {
   region: '',
   state: '',
   instance_link: '',
-  implementation_state: '',
-  new_recurring: '',
-  kickoff_meeting_date: '',
-  billing_date: '',
+  implementation_state: 'Yet to start',
+  new_recurring: 'New',
   total_users: '',
   csm_ids: [],
   rm_ids: [],
@@ -27,7 +25,7 @@ const BLANK = {
 const REGIONS = ['North', 'South', 'East', 'West', 'Central']
 const NEW_RECURRING = ['New', 'Recurring']
 const IMPLEMENTATION_STATES = ['Go Live', 'Ongoing', 'Yet to start']
-const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned']
+const CLIENT_STATUSES = ['Active', 'On Hold', 'Completed', 'Churned', 'Cancelled']
 
 export default function Clients() {
   const [clients, setClients] = useState([])
@@ -98,6 +96,10 @@ export default function Clients() {
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const setMulti = (k) => (ids) => setForm({ ...form, [k]: ids })
+  const setState = (e) => {
+    const state = e.target.value
+    setForm((f) => ({ ...f, state, region: STATE_REGIONS[state] || f.region }))
+  }
 
   const exportCsv = async () => {
     setError('')
@@ -169,17 +171,17 @@ export default function Clients() {
                 <input type="date" value={form.go_live_date} onChange={set('go_live_date')} />
               </div>
               <div>
+                <label>State *</label>
+                <select value={form.state} onChange={setState} required>
+                  <option value="">Select…</option>
+                  {STATE_NAMES.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
                 <label>Region *</label>
                 <select value={form.region} onChange={set('region')} required>
                   <option value="">Select…</option>
                   {REGIONS.map((r) => <option key={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label>State *</label>
-                <select value={form.state} onChange={set('state')} required>
-                  <option value="">Select…</option>
-                  {STATE_NAMES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div>
@@ -199,14 +201,6 @@ export default function Clients() {
                   <option value="">Select…</option>
                   {NEW_RECURRING.map((r) => <option key={r}>{r}</option>)}
                 </select>
-              </div>
-              <div>
-                <label>Kickoff Meeting Date</label>
-                <input type="date" value={form.kickoff_meeting_date} onChange={set('kickoff_meeting_date')} />
-              </div>
-              <div>
-                <label>Billing / Go-Live Date</label>
-                <input type="date" value={form.billing_date} onChange={set('billing_date')} />
               </div>
               <div>
                 <label>Total Users</label>

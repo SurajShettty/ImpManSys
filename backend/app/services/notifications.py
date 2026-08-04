@@ -72,6 +72,73 @@ def sync_due_notifications(db: Session) -> None:
     db.commit()
 
 
+def _follow_up_message(meeting: models.Meeting, client_name: str) -> str:
+    today = date.today()
+    if meeting.next_follow_up == today:
+        return f"Follow-up for '{meeting.title}' ({client_name}) is due today"
+    return f"Follow-up for '{meeting.title}' ({client_name}) was due {meeting.next_follow_up:%d %b %Y}"
+
+
+def sync_meeting_followup_notifications(db: Session) -> None:
+    """Upsert follow-up-due alerts for every CSM on a meeting's client, and
+    resolve any existing unread alert whose meeting no longer matches
+    (follow-up date pushed back/cleared, or soft-deleted).
+    """
+    today = date.today()
+
+    candidates = (
+        db.query(models.Meeting)
+        .join(models.Phase, models.Meeting.phase_id == models.Phase.id)
+        .join(models.Client, models.Phase.client_id == models.Client.id)
+        .filter(
+            models.Meeting.is_deleted == False,
+            models.Meeting.next_follow_up.isnot(None),
+            models.Meeting.next_follow_up <= today,
+            models.Client.is_deleted == False,
+        )
+        .all()
+    )
+    candidate_map: dict[tuple[int, int], models.Meeting] = {}
+    for meeting in candidates:
+        for csm in meeting.phase.client.csms:
+            candidate_map[(csm.id, meeting.id)] = meeting
+
+    existing = (
+        db.query(models.Notification)
+        .filter(models.Notification.type == "meeting_follow_up")
+        .all()
+    )
+    existing_map = {(n.user_id, n.meeting_id): n for n in existing}
+
+    for key, notification in existing_map.items():
+        if not notification.is_read and key not in candidate_map:
+            notification.is_read = True
+            notification.read_at = models.utc_now()
+
+    for key, meeting in candidate_map.items():
+        user_id, meeting_id = key
+        notification = existing_map.get(key)
+        client_name = meeting.phase.client.name
+        message = _follow_up_message(meeting, client_name)
+        if notification is None:
+            db.add(
+                models.Notification(
+                    user_id=user_id,
+                    meeting_id=meeting_id,
+                    type="meeting_follow_up",
+                    message=message,
+                )
+            )
+        elif notification.is_read:
+            notification.is_read = False
+            notification.read_at = None
+            notification.message = message
+            notification.created_at = models.utc_now()
+        # else: already active and up to date.
+
+    db.commit()
+
+
 def notify_assignment(db: Session, activity: models.Activity) -> None:
     """Create or reactivate an "assigned to you" alert for the activity's owner."""
     if not activity.owner_id:
