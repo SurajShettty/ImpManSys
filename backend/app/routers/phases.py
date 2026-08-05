@@ -12,6 +12,7 @@ from app.services.templates import (
     recompute_phase_progress,
 )
 from app.services.access import ensure_client_access, filter_phases_query
+from app.services.notifications import sync_meeting_followup_notifications
 
 router = APIRouter()
 
@@ -352,10 +353,13 @@ def update_phase_meeting(
         raise HTTPException(status_code=404, detail="Meeting not found")
     ensure_client_access(db, current_user, meeting.phase.client_id)
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
         setattr(meeting, field, value)
     db.commit()
     db.refresh(meeting)
+    if "next_follow_up" in data:
+        sync_meeting_followup_notifications(db)
     log_activity(db, current_user.id, "meeting", "update", f"Updated meeting '{meeting.title}'")
     return meeting
 

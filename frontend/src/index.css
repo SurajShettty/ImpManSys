@@ -469,6 +469,54 @@ body.dark .notification-item.unread {
   background-color: var(--bg-hover);
 }
 
+/* "Mark as Done" pill button (meeting follow-ups) */
+.mark-done-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--badge-green-text);
+  border-radius: 999px;
+  background: var(--badge-green-bg);
+  color: var(--badge-green-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.mark-done-btn:hover:not(:disabled) {
+  background: #198754;
+  border-color: #198754;
+  color: #fff;
+}
+
+.mark-done-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.mark-done-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.mark-done-spinner {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mark-done-spin 0.6s linear infinite;
+}
+
+@keyframes mark-done-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Forms */
 .form-group select,
 .form-group textarea,
@@ -837,6 +885,33 @@ body.dark .multiselect-search:focus {
   background: var(--bg-hover);
 }
 
+/* Shared "you've arrived" cue for deep-linked meetings/modules/activities:
+   blink a few times, hold, then fade out for good (animation-fill-mode:
+   forwards keeps the end state instead of snapping back to a static style). */
+@keyframes deep-link-pulse-border {
+  0%, 13%, 26%, 75% {
+    border-color: var(--primary-red);
+    box-shadow: 0 0 0 3px rgba(227, 30, 36, 0.2);
+  }
+  6.5%, 19.5%, 100% {
+    border-color: var(--border);
+    box-shadow: 0 0 0 3px rgba(227, 30, 36, 0);
+  }
+}
+
+@keyframes deep-link-pulse-outline {
+  0%, 13%, 26%, 75% {
+    outline-color: var(--primary-red);
+  }
+  6.5%, 19.5%, 100% {
+    outline-color: rgba(227, 30, 36, 0);
+  }
+}
+
+.accordion-header-highlight {
+  animation: deep-link-pulse-border 4.5s ease-in-out forwards;
+}
+
 .accordion-body {
   border: 1px solid var(--border);
   border-top: none;
@@ -963,6 +1038,12 @@ body.dark .multiselect-search:focus {
 
 body.dark .task-overdue {
   background: rgba(220, 53, 69, 0.12);
+}
+
+.activity-row-highlight {
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  animation: deep-link-pulse-outline 4.5s ease-in-out forwards;
 }
 
 .due-date-input {
@@ -2040,6 +2121,10 @@ body.dark .theme-toggle::after {
 
 .meeting-card:hover {
   border-color: var(--primary-red);
+}
+
+.meeting-card-highlight {
+  animation: deep-link-pulse-border 4.5s ease-in-out forwards;
 }
 
 .meeting-summary {

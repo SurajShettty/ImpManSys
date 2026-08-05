@@ -39,8 +39,9 @@ export default function Notifications() {
         // ignore - navigation still proceeds
       }
     }
-    if (n.phase_id) navigate(`/phases/${n.phase_id}`)
-    else if (n.client_id) navigate(`/clients/${n.client_id}`)
+    if (n.phase_id) {
+      navigate(n.meeting_id ? `/phases/${n.phase_id}?tab=meetings&meeting=${n.meeting_id}` : `/phases/${n.phase_id}`)
+    } else if (n.client_id) navigate(`/clients/${n.client_id}`)
   }
 
   const markAllRead = async () => {

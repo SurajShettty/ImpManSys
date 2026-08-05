@@ -15,6 +15,7 @@ export default function MyClients() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [completing, setCompleting] = useState(null)
 
   useEffect(() => {
     setLoading(true)
@@ -27,6 +28,30 @@ export default function MyClients() {
   }, [])
 
   const counts = data?.counts || {}
+
+  const markFollowUpDone = async (f) => {
+    setCompleting(f.meeting_id)
+    setError('')
+    try {
+      await api.put(`/phases/${f.phase_id}/meetings/${f.meeting_id}`, { next_follow_up: null })
+      setData((prev) => {
+        const remaining = prev.follow_ups.filter((row) => row.meeting_id !== f.meeting_id)
+        const wasDue = f.overdue || f.due_today
+        return {
+          ...prev,
+          follow_ups: remaining,
+          counts: {
+            ...prev.counts,
+            overdue_follow_ups: wasDue ? prev.counts.overdue_follow_ups - 1 : prev.counts.overdue_follow_ups,
+          },
+        }
+      })
+    } catch (err) {
+      setError('Failed to mark follow-up as done')
+    } finally {
+      setCompleting(null)
+    }
+  }
 
   return (
     <div className="dashboard">
@@ -71,17 +96,20 @@ export default function MyClients() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Client</th>
                   <th>Meeting</th>
+                  <th>Phase</th>
+                  <th>Client</th>
                   <th>Follow-up Date</th>
                   <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {data.follow_ups.map((f) => (
                   <tr key={f.meeting_id}>
+                    <td><Link to={`/phases/${f.phase_id}?tab=meetings&meeting=${f.meeting_id}`}>{f.title}</Link></td>
+                    <td><Link to={`/phases/${f.phase_id}`}>{f.phase_name}</Link></td>
                     <td><Link to={`/clients/${f.client_id}`}>{f.client_name}</Link></td>
-                    <td><Link to={`/phases/${f.phase_id}`}>{f.title}</Link></td>
                     <td>{f.next_follow_up}</td>
                     <td>
                       {f.overdue ? (
@@ -91,6 +119,34 @@ export default function MyClients() {
                       ) : (
                         <span className="badge badge-grey">Upcoming</span>
                       )}
+                    </td>
+                    <td className="actions" style={{ justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className="mark-done-btn"
+                        onClick={() => markFollowUpDone(f)}
+                        disabled={completing === f.meeting_id}
+                      >
+                        {completing === f.meeting_id ? (
+                          <>
+                            <span className="mark-done-spinner" aria-hidden="true" />
+                            Marking…
+                          </>
+                        ) : (
+                          <>
+                            <svg className="mark-done-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                              <path
+                                d="M3.5 8.5L6.5 11.5L12.5 4.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            Mark as Done
+                          </>
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -114,26 +170,38 @@ export default function MyClients() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Client</th>
                   <th>Activity</th>
+                  <th>Module</th>
+                  <th>Phase</th>
+                  <th>Client</th>
                   <th>Due Date</th>
                   <th>Status</th>
                   <th>Priority</th>
-                  <th>Owner</th>
                 </tr>
               </thead>
               <tbody>
                 {data.activities_due.map((a) => (
                   <tr key={a.id} className={a.overdue ? 'task-overdue' : ''}>
+                    <td>
+                      <Link to={`/phases/${a.phase_id}?tab=overview&module=${a.phase_module_id}&activity=${a.id}`}>
+                        {a.title}
+                      </Link>
+                    </td>
+                    <td>
+                      {a.module_name ? (
+                        <Link to={`/phases/${a.phase_id}?tab=overview&module=${a.phase_module_id}`}>{a.module_name}</Link>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td><Link to={`/phases/${a.phase_id}`}>{a.phase_name}</Link></td>
                     <td><Link to={`/clients/${a.client_id}`}>{a.client_name}</Link></td>
-                    <td><Link to={`/phases/${a.phase_id}`}>{a.title}</Link></td>
                     <td>
                       {a.due_date}
                       {a.overdue && <span className="badge badge-red" style={{ marginLeft: '0.35rem' }}>Overdue</span>}
                     </td>
                     <td><StatusBadge value={a.status} /></td>
                     <td><PriorityBadge value={a.priority} /></td>
-                    <td>{a.owner_name || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -156,8 +224,8 @@ export default function MyClients() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Client</th>
                   <th>Phase</th>
+                  <th>Client</th>
                   <th>End Date</th>
                   <th>Status</th>
                   <th>Progress</th>
@@ -166,8 +234,8 @@ export default function MyClients() {
               <tbody>
                 {data.delayed_phases.map((p) => (
                   <tr key={p.id} className="task-overdue">
-                    <td><Link to={`/clients/${p.client_id}`}>{p.client_name}</Link></td>
                     <td><Link to={`/phases/${p.id}`}>{p.name}</Link></td>
+                    <td><Link to={`/clients/${p.client_id}`}>{p.client_name}</Link></td>
                     <td>{p.end_date}</td>
                     <td><StatusBadge value={p.status} /></td>
                     <td style={{ minWidth: 120 }}><ProgressBar value={p.progress} /></td>

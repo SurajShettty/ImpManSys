@@ -87,6 +87,7 @@ def my_clients_workspace(
             "overdue": m.next_follow_up < today,
             "due_today": m.next_follow_up == today,
             "phase_id": m.phase_id,
+            "phase_name": m.phase.name,
             "client_id": m.phase.client_id,
             "client_name": m.phase.client.name,
         }
@@ -124,6 +125,9 @@ def my_clients_workspace(
             "priority": a.priority,
             "owner_name": a.owner.name if a.owner else None,
             "phase_id": a.phase_module.phase_id,
+            "phase_name": a.phase_module.phase.name,
+            "phase_module_id": a.phase_module_id,
+            "module_name": a.phase_module.module.name if a.phase_module.module else None,
             "client_id": a.phase_module.phase.client_id,
             "client_name": a.phase_module.phase.client.name,
         }

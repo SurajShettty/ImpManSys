@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, PriorityBadge, ProgressBar } from '../components/ui'
 import { ModuleTimeline, GanttTimeline } from '../components/Timeline'
@@ -79,6 +79,7 @@ function toForm(phase) {
 export default function PhaseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [phase, setPhase] = useState(null)
   const [plan, setPlan] = useState([])
   const [catalog, setCatalog] = useState([])
@@ -118,6 +119,53 @@ export default function PhaseDetail() {
   }
 
   useEffect(load, [id])
+
+  // Deep-link support: ?tab=meetings&meeting=123 (from My Worklist / notifications)
+  // switches to that tab and expands + scrolls to the referenced meeting.
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam) setActiveTab(tabParam)
+  }, [searchParams])
+
+  useEffect(() => {
+    const meetingParam = searchParams.get('meeting')
+    if (!meetingParam || meetings.length === 0) return
+    const meetingId = Number(meetingParam)
+    if (!meetings.some((m) => m.id === meetingId)) return
+    setExpandedMeetings((prev) => (prev[meetingId] ? prev : { ...prev, [meetingId]: true }))
+    document.getElementById(`meeting-${meetingId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [searchParams, meetings])
+
+  // Deep-link support: ?tab=overview&module=456 (from My Worklist activities)
+  // expands + scrolls to the referenced module's accordion.
+  useEffect(() => {
+    const moduleParam = searchParams.get('module')
+    if (!moduleParam || plan.length === 0) return
+    const phaseModuleId = Number(moduleParam)
+    if (!plan.some((pm) => pm.id === phaseModuleId)) return
+    setExpanded((prev) => (prev[phaseModuleId] ? prev : { ...prev, [phaseModuleId]: true }))
+    document.getElementById(`module-${phaseModuleId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [searchParams, plan])
+
+  // Deep-link support: ?tab=overview&module=456&activity=789 additionally expands
+  // the owning module (if not already) and scrolls to + highlights that activity row.
+  // Only runs on navigation (not on `expanded` changes) so manually collapsing the
+  // module afterward doesn't get fought by this effect re-forcing it back open.
+  // The row only mounts once the module is expanded, so the scroll is deferred two
+  // frames to let that re-render commit and paint first.
+  useEffect(() => {
+    const activityParam = searchParams.get('activity')
+    if (!activityParam || plan.length === 0) return
+    const activityId = Number(activityParam)
+    const owningModule = plan.find((pm) => pm.activities.some((a) => a.id === activityId))
+    if (!owningModule) return
+    setExpanded((prev) => (prev[owningModule.id] ? prev : { ...prev, [owningModule.id]: true }))
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`activity-${activityId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    })
+  }, [searchParams, plan])
 
   const usedModuleIds = new Set(plan.map((pm) => pm.module_id))
   // Kickoff is auto-created for every phase; don't offer it in the add-module dropdown.
@@ -603,8 +651,11 @@ export default function PhaseDetail() {
           )}
 
           {plan.map((pm) => (
-            <div key={pm.id}>
-              <div className="accordion-header" onClick={() => setExpanded((e) => ({ ...e, [pm.id]: !e[pm.id] }))}>
+            <div id={`module-${pm.id}`} key={pm.id}>
+              <div
+                className={`accordion-header${searchParams.get('module') === String(pm.id) ? ' accordion-header-highlight' : ''}`}
+                onClick={() => setExpanded((e) => ({ ...e, [pm.id]: !e[pm.id] }))}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <strong>{expanded[pm.id] ? '▼' : '▶'} {pm.module?.name}</strong>
                   <StatusBadge value={pm.status} />
@@ -641,10 +692,12 @@ export default function PhaseDetail() {
                       <tbody>
                         {pm.activities.map((activity) => {
                           const overdue = isOverdue(activity)
+                          const isLinkedActivity = searchParams.get('activity') === String(activity.id)
                           return (
                           <tr
+                            id={`activity-${activity.id}`}
                             key={activity.id}
-                            className={overdue ? 'task-overdue' : ''}
+                            className={`${overdue ? 'task-overdue' : ''}${isLinkedActivity ? ' activity-row-highlight' : ''}`}
                             draggable
                             onDragStart={(e) => onDragStart(e, pm.id, activity.id)}
                             onDragOver={(e) => onDragOver(e, pm.id)}
@@ -793,8 +846,13 @@ export default function PhaseDetail() {
           <div className="meetings-list">
             {meetings.map((m) => {
               const isExpanded = expandedMeetings[m.id]
+              const isLinkedMeeting = searchParams.get('meeting') === String(m.id)
               return (
-                <div className="meeting-card" key={m.id}>
+                <div
+                  className={`meeting-card${isLinkedMeeting ? ' meeting-card-highlight' : ''}`}
+                  id={`meeting-${m.id}`}
+                  key={m.id}
+                >
                   <div className="meeting-summary">
                     <button
                       type="button"
