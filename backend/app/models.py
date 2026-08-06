@@ -62,6 +62,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)  # set for role="Client" portal logins
     is_active = Column(Boolean, default=True, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
@@ -69,6 +70,7 @@ class User(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     role = relationship("Role", back_populates="users")
+    client = relationship("Client", foreign_keys=[client_id])
 
 
 class ActivityLog(Base):
@@ -318,6 +320,12 @@ class Activity(Base):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def depends_on(self) -> list["Activity"]:
+        """Activities this one depends on, skipping any that were soft-deleted
+        (a deleted prerequisite stops blocking, same as Cancelled)."""
+        return [d.depends_on for d in self.dependencies if d.depends_on and not d.depends_on.is_deleted]
+
 
 class ChecklistItem(Base):
     __tablename__ = "checklist_items"
@@ -358,6 +366,7 @@ class Meeting(Base):
     action_items = Column(Text, nullable=True)
     next_follow_up = Column(Date, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    client_visible = Column(Boolean, default=False, nullable=False)  # opt-in: shown in the client portal
     is_deleted = Column(Boolean, default=False, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -365,3 +374,35 @@ class Meeting(Base):
 
     phase = relationship("Phase", back_populates="meetings")
     creator = relationship("User")
+
+
+class Document(Base):
+    """A file (contract, SOW, UAT sign-off, training deck, ...) attached to a
+    Client, Phase, or Activity. Exactly one of client_id/phase_id/activity_id
+    is set, same convention as Notification (see its docstring above).
+
+    Downloads are served through an authenticated endpoint, not a public
+    static path - stored_filename is always a generated name, never the
+    user-supplied one, and lives outside the app's public uploads/ directory.
+    """
+
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
+    phase_id = Column(Integer, ForeignKey("phases.id"), nullable=True, index=True)
+    activity_id = Column(Integer, ForeignKey("activities.id"), nullable=True, index=True)
+    category = Column(String(30), nullable=False, default="Other")
+    original_filename = Column(String(255), nullable=False)
+    stored_filename = Column(String(80), nullable=False)
+    content_type = Column(String(120), nullable=True)
+    size_bytes = Column(Integer, nullable=False)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    client = relationship("Client", foreign_keys=[client_id])
+    phase = relationship("Phase", foreign_keys=[phase_id])
+    activity = relationship("Activity", foreign_keys=[activity_id])
+    uploader = relationship("User", foreign_keys=[uploaded_by])

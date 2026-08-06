@@ -19,6 +19,8 @@ from app.routers import (
     recycle_bin,
     notifications,
     workspace,
+    portal,
+    documents,
 )
 
 settings = get_settings()
@@ -70,3 +72,5 @@ app.include_router(audit_logs.router, prefix="/api/audit-logs", tags=["audit-log
 app.include_router(recycle_bin.router, prefix="/api/recycle-bin", tags=["recycle-bin"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"])
+app.include_router(portal.router, prefix="/api/portal", tags=["portal"])
+app.include_router(documents.router, prefix="/api/documents", tags=["documents"])

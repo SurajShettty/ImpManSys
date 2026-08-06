@@ -14,6 +14,12 @@ import AuditLogs from './pages/AuditLogs'
 import RecycleBin from './pages/RecycleBin'
 import RolePermissions from './pages/RolePermissions'
 import Layout from './components/Layout'
+import PortalLayout from './components/PortalLayout'
+import PortalOverview from './pages/portal/PortalOverview'
+import PortalPhases from './pages/portal/PortalPhases'
+import PortalPhaseDetail from './pages/portal/PortalPhaseDetail'
+import PortalMeetings from './pages/portal/PortalMeetings'
+import PortalNotifications from './pages/portal/PortalNotifications'
 import PrivateRoute from './components/PrivateRoute'
 import RoleRoute from './components/RoleRoute'
 import PermissionRoute from './components/PermissionRoute'
@@ -23,9 +29,27 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route
+        path="/portal"
         element={
           <PrivateRoute>
-            <Layout />
+            <RoleRoute allowedRoles={['Client']}>
+              <PortalLayout />
+            </RoleRoute>
+          </PrivateRoute>
+        }
+      >
+        <Route index element={<PortalOverview />} />
+        <Route path="phases" element={<PortalPhases />} />
+        <Route path="phases/:id" element={<PortalPhaseDetail />} />
+        <Route path="meetings" element={<PortalMeetings />} />
+        <Route path="notifications" element={<PortalNotifications />} />
+      </Route>
+      <Route
+        element={
+          <PrivateRoute>
+            <RoleRoute excludeRoles={['Client']}>
+              <Layout />
+            </RoleRoute>
           </PrivateRoute>
         }
       >

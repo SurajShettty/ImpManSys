@@ -72,6 +72,19 @@ def list_deleted_items(
         .order_by(models.Meeting.deleted_at.desc())
         .all()
     )
+    documents = (
+        db.query(models.Document)
+        .filter(models.Document.is_deleted == True, models.Document.deleted_at >= cutoff)
+        .order_by(models.Document.deleted_at.desc())
+        .all()
+    )
+
+    def _document_attached_to(d):
+        if d.client_id is not None:
+            return d.client.name if d.client else None
+        if d.phase_id is not None:
+            return d.phase.name if d.phase else None
+        return d.activity.title if d.activity else None
 
     def expires(dt):
         return (dt + RETENTION).isoformat() if dt else None
@@ -131,6 +144,17 @@ def list_deleted_items(
                 "expires_at": expires(m.deleted_at),
             }
             for m in meetings
+        ],
+        "documents": [
+            {
+                "id": d.id,
+                "original_filename": d.original_filename,
+                "category": d.category,
+                "attached_to": _document_attached_to(d),
+                "deleted_at": d.deleted_at.isoformat() if d.deleted_at else None,
+                "expires_at": expires(d.deleted_at),
+            }
+            for d in documents
         ],
     }
 
@@ -205,6 +229,20 @@ def restore_item(
         _not_expired(item)
         if item.phase and item.phase.is_deleted:
             raise HTTPException(status_code=400, detail="Restore the parent phase first")
+        item.is_deleted = False
+        item.deleted_at = None
+
+    elif entity == "documents":
+        item = db.query(models.Document).filter(models.Document.id == item_id, models.Document.is_deleted == True).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Document not found in recycle bin")
+        _not_expired(item)
+        if item.client_id is not None and item.client and item.client.is_deleted:
+            raise HTTPException(status_code=400, detail="Restore the parent client first")
+        if item.phase_id is not None and item.phase and item.phase.is_deleted:
+            raise HTTPException(status_code=400, detail="Restore the parent phase first")
+        if item.activity_id is not None and item.activity and item.activity.is_deleted:
+            raise HTTPException(status_code=400, detail="Restore the parent activity first")
         item.is_deleted = False
         item.deleted_at = None
 

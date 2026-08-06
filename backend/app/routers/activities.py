@@ -12,6 +12,7 @@ from app.services.templates import (
 )
 from app.services.notifications import notify_assignment
 from app.services.access import ensure_client_access
+from app.services.documents import cascade_delete_documents
 
 router = APIRouter()
 
@@ -30,6 +31,60 @@ def _load_activity(db: Session, activity_id: int, current_user: models.User) -> 
 def _roll_up(db: Session, activity: models.Activity) -> None:
     """Recompute progress for the owning module and phase after an activity change."""
     recompute_phase_module_progress(db, activity.phase_module)
+
+
+def _resolve_dependency_targets(
+    db: Session, activity: models.Activity, depends_on_ids: list[int]
+) -> list[models.Activity]:
+    """Validate a proposed dependency set: no self-reference, all targets in
+    the same phase, and no cycle back to `activity`. Raises 400 on failure."""
+    unique_ids = set(depends_on_ids)
+    if activity.id in unique_ids:
+        raise HTTPException(status_code=400, detail="An activity can't depend on itself")
+    if not unique_ids:
+        return []
+
+    targets = (
+        db.query(models.Activity)
+        .filter(models.Activity.id.in_(unique_ids), models.Activity.is_deleted == False)
+        .all()
+    )
+    if len(targets) != len(unique_ids):
+        raise HTTPException(status_code=400, detail="One or more dependency activities were not found")
+
+    phase_id = activity.phase_module.phase_id
+    for target in targets:
+        if target.phase_module.phase_id != phase_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{target.title}' is not in the same phase and can't be set as a dependency",
+            )
+
+    # Cycle check: walk the dependency graph outward from each target; if we
+    # ever reach `activity.id`, setting this dependency would create a cycle.
+    visited: set[int] = set()
+    queue = [t.id for t in targets]
+    while queue:
+        current_id = queue.pop()
+        if current_id == activity.id:
+            raise HTTPException(status_code=400, detail="That would create a circular dependency")
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+        queue.extend(
+            row.depends_on_activity_id
+            for row in db.query(models.ActivityDependency.depends_on_activity_id).filter(
+                models.ActivityDependency.activity_id == current_id
+            )
+        )
+
+    return targets
+
+
+def _set_activity_dependencies(db: Session, activity: models.Activity, targets: list[models.Activity]) -> None:
+    db.query(models.ActivityDependency).filter(models.ActivityDependency.activity_id == activity.id).delete()
+    for target in targets:
+        db.add(models.ActivityDependency(activity_id=activity.id, depends_on_activity_id=target.id))
 
 
 @router.get("/{activity_id}", response_model=schemas.ActivityResponse)
@@ -86,11 +141,20 @@ def update_activity(
     data = payload.model_dump(exclude_unset=True)
     previous_owner_id = activity.owner_id
 
+    depends_on_ids = data.pop("depends_on_activity_ids", None)
+    new_targets = _resolve_dependency_targets(db, activity, depends_on_ids) if depends_on_ids is not None else None
+
     # Keep progress consistent with a status change. Completed = 100%.
     # Re-opening a completed activity resets progress unless the caller explicitly
     # provided a new progress value.
     new_status = data.get("status")
     old_status = activity.status
+    if new_status == "Completed":
+        prerequisites = new_targets if new_targets is not None else activity.depends_on
+        unmet = [p for p in prerequisites if p.status not in ("Completed", "Cancelled")]
+        if unmet:
+            names = ", ".join(p.title for p in unmet)
+            raise HTTPException(status_code=400, detail=f"Can't mark this Completed — still blocked by: {names}")
     if new_status is not None:
         if new_status == "Completed":
             data["progress"] = 100.0
@@ -102,6 +166,8 @@ def update_activity(
 
     for field, value in data.items():
         setattr(activity, field, value)
+    if new_targets is not None:
+        _set_activity_dependencies(db, activity, new_targets)
     db.commit()
     db.refresh(activity)
     _roll_up(db, activity)
@@ -133,6 +199,7 @@ def delete_activity(
     for item in activity.checklist_items:
         item.is_deleted = True
         item.deleted_at = now
+    cascade_delete_documents(db, activity_ids=[activity.id])
     db.commit()
     recompute_phase_module_progress(db, phase_module)
     db.commit()

@@ -16,8 +16,8 @@ export default function Login() {
     setError('')
     setSubmitting(true)
     try {
-      await login(email, password)
-      navigate('/')
+      const me = await login(email, password)
+      navigate(me.role_name === 'Client' ? '/portal' : '/')
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed')
     } finally {

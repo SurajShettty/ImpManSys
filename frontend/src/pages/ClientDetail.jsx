@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, PriorityBadge, ProgressBar, MultiSelect } from '../components/ui'
 import { STATE_NAMES } from '../components/IndiaMap'
+import DocumentPanel from '../components/DocumentPanel'
 
 const PROJECT_TYPES = [
   'New Implementation',
@@ -119,6 +120,24 @@ export default function ClientDetail() {
     setError('')
   }
 
+  const exportPlan = async (format) => {
+    setError('')
+    try {
+      const res = await api.get(`/clients/${id}/export`, { params: { format }, responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      const slug = client.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'client'
+      a.download = `${slug}-implementation-plan.${format}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setError('Failed to export implementation plan')
+    }
+  }
+
   const submitEdit = async (e) => {
     e.preventDefault()
     setSavingEdit(true)
@@ -156,7 +175,15 @@ export default function ClientDetail() {
       <div className="breadcrumb"><Link to="/clients">Clients</Link> / {client.name}</div>
       <div className="page-header">
         <h2 style={{ margin: 0 }}>{client.name} <PriorityBadge value={client.priority} /></h2>
-        <StatusBadge value={client.status} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button type="button" className="btn btn-light btn-sm" onClick={() => exportPlan('xlsx')}>
+            Export Excel
+          </button>
+          <button type="button" className="btn btn-light btn-sm" onClick={() => exportPlan('pdf')}>
+            Export PDF
+          </button>
+          <StatusBadge value={client.status} />
+        </div>
       </div>
 
       {error && <div className="error">{error}</div>}
@@ -494,6 +521,10 @@ export default function ClientDetail() {
             })}
           </div>
         )}
+      </div>
+
+      <div style={{ marginTop: '1rem' }}>
+        <DocumentPanel clientId={client.id} />
       </div>
     </div>
   )

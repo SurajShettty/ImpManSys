@@ -2,13 +2,15 @@ import csv
 import io
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Literal
 from app.database import get_db
 from app import models, schemas
 from app.dependencies import get_current_active_user, require_permission
 from app.utils.audit import log_activity
 from app.services.access import ensure_client_access, filter_clients_query, is_scoped
 from app.services.notifications import notify_client_assignment
+from app.services import reports
+from app.services.documents import cascade_delete_documents
 
 router = APIRouter()
 
@@ -236,9 +238,12 @@ def delete_client(
     now = models.utc_now()
     client.is_deleted = True
     client.deleted_at = now
+    phase_ids = []
+    activity_ids = []
     for phase in client.phases:
         phase.is_deleted = True
         phase.deleted_at = now
+        phase_ids.append(phase.id)
         for meeting in phase.meetings:
             meeting.is_deleted = True
             meeting.deleted_at = now
@@ -248,9 +253,12 @@ def delete_client(
             for activity in phase_module.activities:
                 activity.is_deleted = True
                 activity.deleted_at = now
+                activity_ids.append(activity.id)
                 for item in activity.checklist_items:
                     item.is_deleted = True
                     item.deleted_at = now
+
+    cascade_delete_documents(db, client_id=client.id, phase_ids=phase_ids, activity_ids=activity_ids)
 
     db.commit()
     log_activity(db, current_user.id, "client", "delete", f"Deleted client #{client_id}")
@@ -300,3 +308,36 @@ def list_client_phases(
         .all()
     )
     return phases
+
+
+@router.get("/{client_id}/export")
+def export_client_plan(
+    client_id: int,
+    format: Literal["xlsx", "pdf"] = Query(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+):
+    """This client's full implementation plan (phases/modules/activities), as
+    a downloadable Excel workbook or PDF snapshot."""
+    client = db.query(models.Client).filter(models.Client.id == client_id, models.Client.is_deleted == False).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    ensure_client_access(db, current_user, client_id)
+
+    slug = "".join(c if c.isalnum() else "-" for c in client.name).strip("-").lower() or "client"
+    log_activity(db, current_user.id, "client", "export", f"Exported implementation plan for '{client.name}' ({format})")
+
+    if format == "xlsx":
+        content = reports.build_client_plan_workbook(client)
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename = f"{slug}-implementation-plan.xlsx"
+    else:
+        content = reports.build_client_plan_pdf(client)
+        media_type = "application/pdf"
+        filename = f"{slug}-implementation-plan.pdf"
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

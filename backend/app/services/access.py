@@ -2,6 +2,12 @@
 Relationship Manager): they only see clients they're assigned to via
 client_csms/client_rms. Every other role keeps full visibility, gated only
 by their existing permission codes.
+
+The "Client" role is scoped too, but to exactly one client (the institution
+their login is linked to via User.client_id) rather than an assignment
+table. It's kept out of SCOPED_ROLES because that set also drives the
+internal CSM/RM "My Clients" worklist (see routers/workspace.py), which a
+Client-role user should never reach.
 """
 from fastapi import HTTPException
 from sqlalchemy.orm import Query, Session
@@ -11,7 +17,7 @@ SCOPED_ROLES = {"Customer Success Manager", "Relationship Manager"}
 
 
 def is_scoped(user: models.User) -> bool:
-    return user.role.name in SCOPED_ROLES
+    return user.role.name in SCOPED_ROLES or user.role.name == "Client"
 
 
 def accessible_client_ids(db: Session, user: models.User) -> set[int] | None:
@@ -19,6 +25,9 @@ def accessible_client_ids(db: Session, user: models.User) -> set[int] | None:
     this user may access."""
     if not is_scoped(user):
         return None
+
+    if user.role.name == "Client":
+        return {user.client_id} if user.client_id is not None else set()
 
     csm_ids = {
         row.client_id

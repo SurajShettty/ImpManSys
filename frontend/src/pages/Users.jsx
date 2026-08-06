@@ -6,12 +6,14 @@ const BLANK = {
   email: '',
   password: '',
   role_id: '',
+  client_id: '',
   is_active: true,
 }
 
 export default function Users() {
   const [users, setUsers] = useState([])
   const [roles, setRoles] = useState([])
+  const [clients, setClients] = useState([])
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -37,6 +39,10 @@ export default function Users() {
   useEffect(() => {
     loadUsers()
     loadRoles()
+    api
+      .get('/clients/', { params: { page_size: 100 } })
+      .then((res) => setClients(res.data.items || []))
+      .catch(() => {})
   }, [])
 
   const openCreate = () => {
@@ -53,6 +59,7 @@ export default function Users() {
       email: user.email || '',
       password: '',
       role_id: user.role_id ? String(user.role_id) : '',
+      client_id: user.client_id ? String(user.client_id) : '',
       is_active: user.is_active ?? true,
     })
     setShowModal(true)
@@ -74,6 +81,7 @@ export default function Users() {
         name: form.name,
         email: form.email,
         role_id: parseInt(form.role_id, 10),
+        client_id: selectedRole?.name === 'Client' && form.client_id ? parseInt(form.client_id, 10) : null,
         is_active: form.is_active,
       }
       if (form.password) {
@@ -154,7 +162,14 @@ export default function Users() {
                   <strong>{u.name}</strong>
                 </td>
                 <td>{u.email}</td>
-                <td>{u.role?.name || '—'}</td>
+                <td>
+                  {u.role?.name || '—'}
+                  {u.role?.name === 'Client' && (
+                    <span className="muted" style={{ display: 'block', fontSize: '0.85em' }}>
+                      {clients.find((c) => c.id === u.client_id)?.name || 'Not linked to a client'}
+                    </span>
+                  )}
+                </td>
                 <td>
                   <span className={`badge ${u.is_active ? 'badge-green' : 'badge-grey'}`}>
                     {u.is_active ? 'Active' : 'Inactive'}
@@ -247,6 +262,20 @@ export default function Users() {
                     </select>
                   </div>
                 </div>
+                {selectedRole?.name === 'Client' && (
+                  <div className="form-group">
+                    <label htmlFor="client_id">Client *</label>
+                    <p className="field-hint">This login will only see this client's data in the client portal.</p>
+                    <select id="client_id" value={form.client_id} onChange={set('client_id')} required>
+                      <option value="">Select a client…</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="form-group checkbox-field">
                   <input id="is_active" type="checkbox" checked={form.is_active} onChange={set('is_active')} />
                   <label htmlFor="is_active">Active account</label>

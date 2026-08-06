@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     db_password: str = "ims"
     db_name: str = "ims"
 
+    documents_dir: str = "documents"
+    max_document_size_mb: int = 20
+
     @field_validator("debug", mode="before")
     @classmethod
     def _debug_bool(cls, value):

@@ -36,6 +36,7 @@ def create_user(
         email=payload.email,
         hashed_password=get_password_hash(payload.password),
         role_id=payload.role_id,
+        client_id=payload.client_id,
         is_active=payload.is_active,
     )
     db.add(user)

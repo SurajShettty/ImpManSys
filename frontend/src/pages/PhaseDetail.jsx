@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api/client'
-import { StatusBadge, PriorityBadge, ProgressBar } from '../components/ui'
+import { StatusBadge, PriorityBadge, ProgressBar, MultiSelect } from '../components/ui'
 import { ModuleTimeline, GanttTimeline } from '../components/Timeline'
+import DocumentPanel from '../components/DocumentPanel'
 
 const ACTIVITY_STATUSES = [
   'Not Started',
@@ -16,6 +17,11 @@ const ACTIVITY_STATUSES = [
 ]
 
 const ACTIVITY_PRIORITIES = ['Critical', 'High', 'Medium', 'Low']
+
+// Dependency statuses that no longer block a dependent activity from being
+// marked Completed (matches Activity.depends_on's soft-delete handling on
+// the backend: a resolved-either-way prerequisite stops blocking).
+const UNBLOCKING_STATUSES = ['Completed', 'Cancelled']
 
 const PHASE_TYPES = [
   'New Implementation',
@@ -39,6 +45,7 @@ const EMPTY_MEETING = {
   decisions: '',
   action_items: '',
   next_follow_up: '',
+  client_visible: false,
 }
 
 const ACTIVITY_CATEGORIES = ['Regular', 'Custom Development', 'Enhancement']
@@ -66,6 +73,7 @@ const EMPTY_ACTIVITY_DETAIL = {
   category: 'Regular',
   proposed_timeline: '',
   module_status: '',
+  depends_on_activity_ids: [],
 }
 
 function toForm(phase) {
@@ -207,9 +215,22 @@ export default function PhaseDetail() {
   }
 
   const updateActivityStatus = async (activityId, status) => {
-    await api.put(`/activities/${activityId}`, { status })
-    await loadPlan()
+    setError('')
+    try {
+      await api.put(`/activities/${activityId}`, { status })
+      await loadPlan()
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update status')
+    }
   }
+
+  const isBlocked = (activity) =>
+    (activity.depends_on || []).some((d) => !UNBLOCKING_STATUSES.includes(d.status))
+  const blockedByLabel = (activity) =>
+    (activity.depends_on || [])
+      .filter((d) => !UNBLOCKING_STATUSES.includes(d.status))
+      .map((d) => d.title)
+      .join(', ')
 
   const updateActivityPriority = async (activityId, priority) => {
     setError('')
@@ -375,6 +396,7 @@ export default function PhaseDetail() {
             decisions: meeting.decisions || '',
             action_items: meeting.action_items || '',
             next_follow_up: meeting.next_follow_up || '',
+            client_visible: meeting.client_visible || false,
           }
         : EMPTY_MEETING
     )
@@ -432,6 +454,8 @@ export default function PhaseDetail() {
         f[key] = value
       }
     }
+    // Response shape is `depends_on: [{id, title, status}]`, not a same-named id list.
+    f.depends_on_activity_ids = (activity.depends_on || []).map((d) => d.id)
     return f
   }
 
@@ -519,6 +543,7 @@ export default function PhaseDetail() {
           ['overview', 'Overview'],
           ['meetings', `Meetings (${meetings.length})`],
           ['timeline', 'Timeline'],
+          ['documents', 'Documents'],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -712,6 +737,11 @@ export default function PhaseDetail() {
                                     {activity.category}
                                   </span>
                                 )}
+                                {isBlocked(activity) && (
+                                  <span className="badge badge-red" title={`Blocked by: ${blockedByLabel(activity)}`}>
+                                    Blocked
+                                  </span>
+                                )}
                                 {activity.external_link && (
                                   <a
                                     href={activity.external_link}
@@ -743,7 +773,9 @@ export default function PhaseDetail() {
                                 onChange={(e) => updateActivityStatus(activity.id, e.target.value)}
                                 className={`status-select status-${activity.status?.toLowerCase().replace(/ /g, '-')}`}
                               >
-                                {ACTIVITY_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                                {ACTIVITY_STATUSES.map((s) => (
+                                  <option key={s} disabled={s === 'Completed' && isBlocked(activity)}>{s}</option>
+                                ))}
                               </select>
                             </td>
                             <td>
@@ -868,6 +900,7 @@ export default function PhaseDetail() {
                       <span className="muted">{m.meeting_date}</span>
                       {m.participants && <span className="muted">• {m.participants}</span>}
                       {m.next_follow_up && <span className="muted">• Next: {m.next_follow_up}</span>}
+                      {m.client_visible && <span className="badge badge-green">Visible to client</span>}
                     </div>
                     <div className="actions">
                       <button className="btn btn-secondary btn-sm" onClick={() => openMeetingModal(m)}>Edit</button>
@@ -930,6 +963,8 @@ export default function PhaseDetail() {
           </div>
         )
       )}
+
+      {activeTab === 'documents' && <DocumentPanel phaseId={phase.id} />}
 
       {meetingModalOpen && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeMeetingModal() }}>
@@ -1002,6 +1037,15 @@ export default function PhaseDetail() {
                     placeholder="Who does what by when..."
                   />
                 </div>
+                <div className="checkbox-field">
+                  <input
+                    id="meeting_client_visible"
+                    type="checkbox"
+                    checked={meetingForm.client_visible}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, client_visible: e.target.checked })}
+                  />
+                  <label htmlFor="meeting_client_visible">Visible to client</label>
+                </div>
                 {error && <div className="error" style={{ marginBottom: 0 }}>{error}</div>}
               </div>
               <div className="modal-footer">
@@ -1048,7 +1092,17 @@ export default function PhaseDetail() {
                       value={activityForm.status}
                       onChange={(e) => setActivityForm({ ...activityForm, status: e.target.value })}
                     >
-                      {ACTIVITY_STATUSES.map((s) => <option key={s}>{s}</option>)}
+                      {ACTIVITY_STATUSES.map((s) => {
+                        // Reflects the form's currently-selected dependencies, not just the
+                        // saved ones, so removing a blocker here unlocks Completed immediately.
+                        const formIsBlocked =
+                          s === 'Completed' &&
+                          activityForm.depends_on_activity_ids.some((depId) => {
+                            const dep = plan.flatMap((pm) => pm.activities).find((a) => a.id === depId)
+                            return dep && !UNBLOCKING_STATUSES.includes(dep.status)
+                          })
+                        return <option key={s} disabled={formIsBlocked}>{s}</option>
+                      })}
                     </select>
                   </div>
                   <div>
@@ -1113,6 +1167,20 @@ export default function PhaseDetail() {
                       onChange={(e) => setActivityForm({ ...activityForm, actual_hours: e.target.value })}
                     />
                   </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                  <label>Depends On</label>
+                  <MultiSelect
+                    options={plan
+                      .flatMap((pm) => pm.activities)
+                      .filter((a) => a.id !== editingActivity?.id)
+                      .map((a) => ({ id: a.id, name: a.title }))}
+                    value={activityForm.depends_on_activity_ids}
+                    onChange={(ids) => setActivityForm({ ...activityForm, depends_on_activity_ids: ids })}
+                    placeholder="No dependencies"
+                  />
+                  <p className="field-hint">This activity can't be marked Completed until these are Completed or Cancelled.</p>
                 </div>
 
                 <div className="form-row" style={{ marginTop: '0.75rem' }}>
@@ -1201,6 +1269,13 @@ export default function PhaseDetail() {
                     onChange={(e) => setActivityForm({ ...activityForm, internal_response: e.target.value })}
                   />
                 </div>
+
+                {editingActivity && (
+                  <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                    <label>Documents</label>
+                    <DocumentPanel activityId={editingActivity.id} compact />
+                  </div>
+                )}
 
                 {error && <div className="error" style={{ marginBottom: 0 }}>{error}</div>}
               </div>

@@ -51,6 +51,7 @@ class UserBase(BaseModel):
     name: str
     email: EmailStr
     role_id: int
+    client_id: int | None = None  # set when role_id refers to the "Client" role
     is_active: bool = True
 
 
@@ -62,6 +63,7 @@ class UserUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
     role_id: int | None = None
+    client_id: int | None = None
     is_active: bool | None = None
     password: str | None = None
 
@@ -355,6 +357,15 @@ class ActivityUpdate(BaseModel):
     category: str | None = None
     proposed_timeline: date | None = None
     module_status: str | None = None
+    depends_on_activity_ids: list[int] | None = None
+
+
+# ---------- Reusable mini activity (dependency display) ----------
+class ActivityDependencyBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    status: str
 
 
 class ActivityResponse(ActivityBase):
@@ -369,6 +380,37 @@ class ActivityResponse(ActivityBase):
     owner: UserBrief | None = None
     reviewer: UserBrief | None = None
     checklist_items: list[ChecklistItemResponse] = []
+    depends_on: list[ActivityDependencyBrief] = []
+
+
+# ---------- Activity (client portal - internal-only fields omitted) ----------
+class ActivityPortalResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    phase_module_id: int
+    title: str
+    description: str | None = None
+    priority: str
+    status: str
+    due_date: date | None = None
+    progress: float
+    category: str
+    proposed_timeline: date | None = None
+    client_spoc: str | None = None
+    client_spoc_email: str | None = None
+    client_spoc_phone: str | None = None
+    uat_proposed: bool
+    client_response: str | None = None
+    updated_at: datetime
+    checklist_items: list[ChecklistItemResponse] = []
+
+
+class ActivityClientResponseUpdate(BaseModel):
+    client_response: str | None = None
+
+
+class ChecklistItemPortalUpdate(BaseModel):
+    completed: bool
 
 
 # ---------- Phase module ----------
@@ -399,6 +441,7 @@ class MeetingBase(BaseModel):
     decisions: str | None = None
     action_items: str | None = None
     next_follow_up: date | None = None
+    client_visible: bool = False
 
 
 class MeetingCreate(MeetingBase):
@@ -413,6 +456,7 @@ class MeetingUpdate(BaseModel):
     decisions: str | None = None
     action_items: str | None = None
     next_follow_up: date | None = None
+    client_visible: bool | None = None
 
 
 class MeetingResponse(MeetingBase):
@@ -424,6 +468,36 @@ class MeetingResponse(MeetingBase):
     updated_at: datetime
     creator: UserBrief | None = None
     phase: PhaseBrief | None = None
+
+
+# ---------- Meeting (client portal) ----------
+class MeetingPortalResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    phase_id: int
+    title: str
+    meeting_date: date
+    participants: str | None = None
+    discussion: str | None = None
+    decisions: str | None = None
+    action_items: str | None = None
+    next_follow_up: date | None = None
+    phase: PhaseBrief | None = None
+
+
+# ---------- Document ----------
+class DocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    client_id: int | None = None
+    phase_id: int | None = None
+    activity_id: int | None = None
+    category: str
+    original_filename: str
+    content_type: str | None = None
+    size_bytes: int
+    created_at: datetime
+    uploader: UserBrief | None = None
 
 
 # ---------- Generic ----------

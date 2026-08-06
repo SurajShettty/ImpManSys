@@ -53,6 +53,10 @@ PERMISSIONS = [
     {"code": "meeting.create", "name": "Create Meetings", "category": "Meetings"},
     {"code": "meeting.update", "name": "Edit Meetings", "category": "Meetings"},
     {"code": "meeting.delete", "name": "Delete Meetings", "category": "Meetings"},
+    # Documents
+    {"code": "document.view", "name": "View Documents", "category": "Documents"},
+    {"code": "document.upload", "name": "Upload Documents", "category": "Documents"},
+    {"code": "document.delete", "name": "Delete Documents", "category": "Documents"},
 ]
 
 # Permission codes that were renamed from the previous project/task terminology.
@@ -81,6 +85,7 @@ ROLE_PERMISSIONS = {
         "module.view",
         "activity.view",
         "meeting.view",
+        "document.view",
         "user.view",
         "recycle_bin.view",
         "recycle_bin.restore",
@@ -104,6 +109,9 @@ ROLE_PERMISSIONS = {
         "meeting.create",
         "meeting.update",
         "meeting.delete",
+        "document.view",
+        "document.upload",
+        "document.delete",
     ],
     "Relationship Manager": [
         "dashboard.view",
@@ -124,6 +132,9 @@ ROLE_PERMISSIONS = {
         "meeting.create",
         "meeting.update",
         "meeting.delete",
+        "document.view",
+        "document.upload",
+        "document.delete",
     ],
     "Project Manager": [
         "dashboard.view",
@@ -145,6 +156,9 @@ ROLE_PERMISSIONS = {
         "meeting.create",
         "meeting.update",
         "meeting.delete",
+        "document.view",
+        "document.upload",
+        "document.delete",
     ],
     "Implementation Executive": [
         "dashboard.view",
@@ -156,6 +170,8 @@ ROLE_PERMISSIONS = {
         "activity.create",
         "activity.update",
         "meeting.view",
+        "document.view",
+        "document.upload",
     ],
     "Support Team": [
         "dashboard.view",
@@ -164,13 +180,13 @@ ROLE_PERMISSIONS = {
         "phase.view",
         "activity.view",
         "meeting.view",
+        "document.view",
     ],
-    "Client": [
-        "dashboard.view",
-        "phase.view",
-        "activity.view",
-        "meeting.view",
-    ],
+    # Client-portal logins get no internal permission codes: the /api/portal/*
+    # router gates purely on role (require_role("Client")), scoped to their
+    # own client_id via services.access. Granting internal codes here would
+    # let a client user hit internal endpoints and see internal-only fields.
+    "Client": [],
 }
 
 # Standard implementable modules from the product implementation sheet.
@@ -235,6 +251,17 @@ def seed_data(db: Session) -> None:
             perm = permission_by_code.get(code)
             if perm and code not in current_codes:
                 role.permissions.append(perm)
+        db.commit()
+
+    # One-time correction: earlier seeds granted the Client role internal
+    # permission codes (dashboard.view/phase.view/activity.view/meeting.view).
+    # Those are revoked now that /api/portal/* gates on role instead, so any
+    # database seeded before this change needs them stripped explicitly
+    # (the loop above is additive-only and won't remove them on its own).
+    client_role = roles_by_name.get("Client")
+    if client_role:
+        stale_codes = {"dashboard.view", "phase.view", "activity.view", "meeting.view"}
+        client_role.permissions = [p for p in client_role.permissions if p.code not in stale_codes]
         db.commit()
 
     # Seed module catalogue

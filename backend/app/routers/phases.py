@@ -13,6 +13,7 @@ from app.services.templates import (
 )
 from app.services.access import ensure_client_access, filter_phases_query
 from app.services.notifications import sync_meeting_followup_notifications
+from app.services.documents import cascade_delete_documents
 
 router = APIRouter()
 
@@ -127,18 +128,22 @@ def delete_phase(
     now = models.utc_now()
     phase.is_deleted = True
     phase.deleted_at = now
+    activity_ids = []
     for phase_module in phase.phase_modules:
         phase_module.is_deleted = True
         phase_module.deleted_at = now
         for activity in phase_module.activities:
             activity.is_deleted = True
             activity.deleted_at = now
+            activity_ids.append(activity.id)
             for item in activity.checklist_items:
                 item.is_deleted = True
                 item.deleted_at = now
     for meeting in phase.meetings:
         meeting.is_deleted = True
         meeting.deleted_at = now
+
+    cascade_delete_documents(db, phase_ids=[phase.id], activity_ids=activity_ids)
 
     db.commit()
     log_activity(db, current_user.id, "phase", "delete", f"Deleted phase #{phase_id}")
