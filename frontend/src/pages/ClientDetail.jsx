@@ -4,6 +4,7 @@ import api from '../api/client'
 import { StatusBadge, PriorityBadge, ProgressBar, MultiSelect } from '../components/ui'
 import { STATE_NAMES } from '../components/IndiaMap'
 import DocumentPanel from '../components/DocumentPanel'
+import { normalizeUrl } from '../utils/url'
 
 const PROJECT_TYPES = [
   'New Implementation',
@@ -148,6 +149,8 @@ export default function ClientDetail() {
         const value = editForm[key]
         if (key === 'total_users') {
           payload[key] = value === '' ? null : Number(value)
+        } else if (key === 'instance_link' || key === 'tracker_link') {
+          payload[key] = value === '' ? null : normalizeUrl(value)
         } else {
           payload[key] = value === '' ? null : value
         }

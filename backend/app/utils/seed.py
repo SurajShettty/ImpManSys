@@ -23,6 +23,7 @@ PERMISSIONS = [
     {"code": "recycle_bin.restore", "name": "Restore Deleted Items", "category": "System"},
     {"code": "role.manage", "name": "Manage Roles & Permissions", "category": "System"},
     {"code": "settings.manage", "name": "Manage Settings", "category": "System"},
+    {"code": "team_load.view", "name": "View CSM/RM Load", "category": "System"},
     # Users
     {"code": "user.view", "name": "View Users", "category": "Users"},
     {"code": "user.create", "name": "Create Users", "category": "Users"},

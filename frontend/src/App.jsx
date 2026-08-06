@@ -2,6 +2,7 @@ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Analytics from './pages/Analytics'
 import MyClients from './pages/MyClients'
 import Clients from './pages/Clients'
 import ClientDetail from './pages/ClientDetail'
@@ -66,6 +67,7 @@ function App() {
         <Route path="/clients/:id" element={<ClientDetail />} />
         <Route path="/phases" element={<Phases />} />
         <Route path="/phases/:id" element={<PhaseDetail />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/search" element={<SearchResults />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route

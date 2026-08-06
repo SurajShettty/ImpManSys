@@ -10,6 +10,7 @@ from app.services.access import filter_clients_query, filter_phases_query
 router = APIRouter()
 
 ACTIVE_PHASE_STATUSES = ("Not Started", "In Progress", "On Hold")
+ACTIVE_CLIENT_STATUSES_FOR_LOAD = ("Active", "On Hold")
 
 
 @router.get("/summary")
@@ -110,3 +111,47 @@ def dashboard_summary(
         "go_live_this_month": go_live_this_month,
         "state_counts": state_counts,
     }
+
+
+@router.get("/team-load")
+def team_load(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_permission("team_load.view")),
+):
+    """How many currently-active (Active/On Hold) clients each CSM/RM is
+    carrying - admin-only by default (team_load.view is only granted to the
+    Administrator role in seed.py)."""
+    active_client_ids_query = filter_clients_query(
+        db.query(models.Client.id).filter(
+            models.Client.is_deleted == False,
+            models.Client.status.in_(ACTIVE_CLIENT_STATUSES_FOR_LOAD),
+        ),
+        db,
+        current_user,
+    )
+    active_client_ids = {row[0] for row in active_client_ids_query.all()}
+
+    csm_counts = (
+        db.query(models.User.id, models.User.name, func.count(models.ClientCSM.client_id))
+        .join(models.ClientCSM, models.ClientCSM.user_id == models.User.id)
+        .filter(models.ClientCSM.client_id.in_(active_client_ids))
+        .group_by(models.User.id, models.User.name)
+        .all()
+    )
+    rm_counts = (
+        db.query(models.User.id, models.User.name, func.count(models.ClientRM.client_id))
+        .join(models.ClientRM, models.ClientRM.user_id == models.User.id)
+        .filter(models.ClientRM.client_id.in_(active_client_ids))
+        .group_by(models.User.id, models.User.name)
+        .all()
+    )
+
+    rows = [
+        {"user_id": uid, "name": name, "role": "CSM", "active_clients": count}
+        for uid, name, count in csm_counts
+    ] + [
+        {"user_id": uid, "name": name, "role": "RM", "active_clients": count}
+        for uid, name, count in rm_counts
+    ]
+    rows.sort(key=lambda r: -r["active_clients"])
+    return {"rows": rows}

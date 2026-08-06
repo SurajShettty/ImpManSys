@@ -222,6 +222,9 @@ export default function Layout() {
             )}
             <NavLink to="/clients" className="nav-link">Clients</NavLink>
             <NavLink to="/phases" className="nav-link">Phases</NavLink>
+            {user?.permissions?.includes('dashboard.view') && (
+              <NavLink to="/analytics" className="nav-link">Analytics</NavLink>
+            )}
             {user?.permissions?.includes('user.view') && (
               <NavLink to="/users" className="nav-link">Users</NavLink>
             )}

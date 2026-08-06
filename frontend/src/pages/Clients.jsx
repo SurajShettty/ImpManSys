@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import api from '../api/client'
 import { StatusBadge, PriorityBadge, Pagination, pageRangeText, MultiSelect } from '../components/ui'
 import { STATE_NAMES, STATE_REGIONS } from '../components/IndiaMap'
+import { normalizeUrl } from '../utils/url'
 
 const PAGE_SIZE = 20
 
@@ -83,6 +84,7 @@ export default function Clients() {
       // Drop empty optional fields so the API keeps them null.
       const payload = Object.fromEntries(Object.entries(form).filter(([, v]) => v !== ''))
       if (payload.total_users) payload.total_users = Number(payload.total_users)
+      if (payload.instance_link) payload.instance_link = normalizeUrl(payload.instance_link)
       await api.post('/clients/', payload)
       setForm(BLANK)
       setShowForm(false)

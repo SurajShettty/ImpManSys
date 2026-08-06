@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [users, setUsers] = useState([])
+  const [teamLoad, setTeamLoad] = useState(null)
   const [filters, setFilters] = useState({ client_status: '', region: '', phase_status: '', owner_id: '' })
 
   useEffect(() => {
@@ -43,6 +44,11 @@ export default function Dashboard() {
   useEffect(() => {
     api.get('/users/').then((res) => setUsers(res.data)).catch(() => setUsers([]))
   }, [])
+
+  useEffect(() => {
+    if (!user?.permissions?.includes('team_load.view')) return
+    api.get('/dashboard/team-load').then((res) => setTeamLoad(res.data)).catch(() => {})
+  }, [user])
 
   const setFilter = (key) => (e) => setFilters({ ...filters, [key]: e.target.value })
   const clearFilters = () => setFilters({ client_status: '', region: '', phase_status: '', owner_id: '' })
@@ -198,6 +204,38 @@ export default function Dashboard() {
         </div>
         <IndiaMap counts={summary?.state_counts || {}} />
       </div>
+
+      {teamLoad && (
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <div className="dashboard-card-header">
+            <h3>CSM / RM Load</h3>
+          </div>
+          {teamLoad.rows.length === 0 ? (
+            <p className="muted">No CSM/RM currently has an active client assigned.</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Active Clients</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamLoad.rows.map((r) => (
+                    <tr key={`${r.role}-${r.user_id}`}>
+                      <td>{r.name}</td>
+                      <td><span className="badge badge-grey">{r.role}</span></td>
+                      <td>{r.active_clients}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
