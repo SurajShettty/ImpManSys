@@ -244,6 +244,32 @@ class Module(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
+class ModuleFeatureRequest(Base):
+    """A tracked Feature/Enhancement/Bug request against a catalogue Module
+    (e.g. Admissions, Attendance) - not tied to a specific client/phase."""
+
+    __tablename__ = "module_feature_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    module_id = Column(Integer, ForeignKey("modules.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    type = Column(String(20), nullable=False, default="Feature")
+    status = Column(String(20), nullable=False, default="Requested")
+    priority = Column(String(10), nullable=False, default="Medium")
+    clickup_link = Column(String(500), nullable=True)
+    requested_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    requested_by_client_id = Column(Integer, ForeignKey("clients.id"), nullable=True, index=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    module = relationship("Module")
+    requester = relationship("User", foreign_keys=[requested_by])
+    requested_by_client = relationship("Client", foreign_keys=[requested_by_client_id])
+
+
 class PhaseModule(Base):
     """A module selected for a specific phase (generates its own activity plan)."""
 

@@ -145,6 +145,20 @@ class PhaseBrief(BaseModel):
     name: str
 
 
+# ---------- Reusable mini module ----------
+class ModuleBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+
+# ---------- Reusable mini client ----------
+class ClientBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+
+
 # ---------- Client ----------
 class ClientBase(BaseModel):
     name: str
@@ -282,6 +296,52 @@ class ModuleCreate(ModuleBase):
 class ModuleResponse(ModuleBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+
+
+# ---------- Module Feature Requests ----------
+class ModuleFeatureRequestBase(BaseModel):
+    module_id: int
+    title: str
+    description: str | None = None
+    type: str = "Feature"
+    status: str = "Requested"
+    priority: str = "Medium"
+    clickup_link: str | None = None
+    requested_by_client_id: int | None = None
+
+
+class ModuleFeatureRequestCreate(ModuleFeatureRequestBase):
+    pass
+
+
+class ModuleFeatureRequestUpdate(BaseModel):
+    module_id: int | None = None
+    title: str | None = None
+    description: str | None = None
+    type: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    clickup_link: str | None = None
+    requested_by_client_id: int | None = None
+
+
+class ModuleFeatureRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    module_id: int
+    title: str
+    description: str | None = None
+    type: str
+    status: str
+    priority: str
+    clickup_link: str | None = None
+    requested_by: int | None = None
+    requested_by_client_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+    module: ModuleBrief | None = None
+    requester: UserBrief | None = None
+    requested_by_client: ClientBrief | None = None
 
 
 # ---------- Checklist ----------

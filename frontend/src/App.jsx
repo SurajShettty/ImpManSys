@@ -14,6 +14,7 @@ import Notifications from './pages/Notifications'
 import AuditLogs from './pages/AuditLogs'
 import RecycleBin from './pages/RecycleBin'
 import RolePermissions from './pages/RolePermissions'
+import ModuleFeatureRequests from './pages/ModuleFeatureRequests'
 import Layout from './components/Layout'
 import PortalLayout from './components/PortalLayout'
 import PortalOverview from './pages/portal/PortalOverview'
@@ -83,6 +84,14 @@ function App() {
           element={
             <PermissionRoute permission="audit.view">
               <AuditLogs />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/feature-requests"
+          element={
+            <PermissionRoute permission="feature_request.view">
+              <ModuleFeatureRequests />
             </PermissionRoute>
           }
         />

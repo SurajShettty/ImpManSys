@@ -22,6 +22,7 @@ from app.routers import (
     portal,
     documents,
     analytics,
+    module_features,
 )
 
 settings = get_settings()
@@ -76,3 +77,4 @@ app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"]
 app.include_router(portal.router, prefix="/api/portal", tags=["portal"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(module_features.router, prefix="/api/module-features", tags=["module-features"])

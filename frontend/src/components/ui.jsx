@@ -16,6 +16,10 @@ const STATUS_COLOURS = {
   'Waiting for Internal Team': 'amber',
   'Blocked': 'red',
   'Under Testing': 'theme',
+  // Feature requests
+  'Requested': 'grey',
+  'Done': 'green',
+  'Rejected': 'red',
 }
 
 const PRIORITY_COLOURS = {

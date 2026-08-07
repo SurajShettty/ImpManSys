@@ -78,6 +78,12 @@ def list_deleted_items(
         .order_by(models.Document.deleted_at.desc())
         .all()
     )
+    feature_requests = (
+        db.query(models.ModuleFeatureRequest)
+        .filter(models.ModuleFeatureRequest.is_deleted == True, models.ModuleFeatureRequest.deleted_at >= cutoff)
+        .order_by(models.ModuleFeatureRequest.deleted_at.desc())
+        .all()
+    )
 
     def _document_attached_to(d):
         if d.client_id is not None:
@@ -155,6 +161,16 @@ def list_deleted_items(
                 "expires_at": expires(d.deleted_at),
             }
             for d in documents
+        ],
+        "module_feature_requests": [
+            {
+                "id": f.id,
+                "title": f.title,
+                "module_name": f.module.name if f.module else None,
+                "deleted_at": f.deleted_at.isoformat() if f.deleted_at else None,
+                "expires_at": expires(f.deleted_at),
+            }
+            for f in feature_requests
         ],
     }
 
@@ -243,6 +259,20 @@ def restore_item(
             raise HTTPException(status_code=400, detail="Restore the parent phase first")
         if item.activity_id is not None and item.activity and item.activity.is_deleted:
             raise HTTPException(status_code=400, detail="Restore the parent activity first")
+        item.is_deleted = False
+        item.deleted_at = None
+
+    elif entity == "module_feature_requests":
+        item = (
+            db.query(models.ModuleFeatureRequest)
+            .filter(models.ModuleFeatureRequest.id == item_id, models.ModuleFeatureRequest.is_deleted == True)
+            .first()
+        )
+        if not item:
+            raise HTTPException(status_code=404, detail="Feature request not found in recycle bin")
+        _not_expired(item)
+        if item.module and item.module.is_deleted:
+            raise HTTPException(status_code=400, detail="Restore the parent module first")
         item.is_deleted = False
         item.deleted_at = None
 

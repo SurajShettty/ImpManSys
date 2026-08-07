@@ -228,6 +228,9 @@ export default function Layout() {
             {user?.permissions?.includes('user.view') && (
               <NavLink to="/users" className="nav-link">Users</NavLink>
             )}
+            {user?.permissions?.includes('feature_request.view') && (
+              <NavLink to="/feature-requests" className="nav-link">Feature Requests</NavLink>
+            )}
             <AdminDropdown user={user} />
           </div>
         </div>
