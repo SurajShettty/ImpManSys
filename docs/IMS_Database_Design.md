@@ -18,7 +18,7 @@ role_id (PK, FK) permission_id (PK, FK) created_at
 
 ### users
 
-user_id (PK) name email (unique) hashed_password role_id (FK) is_active is_deleted deleted_at created_at updated_at
+user_id (PK) name email (unique) hashed_password role_id (FK) is_active is_deleted deleted_at created_at updated_at 
 
 ### clients
 
